@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="${request.locale_name}"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      metal:define-macro="base">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WANmap">
+
+    <title>WANmap</title>
+
+    <link href="//oss.maxcdn.com/libs/twitter-bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="${request.static_url('wanmap:static/theme.css')}" rel="stylesheet">
+    <link href="${request.static_url('deform:static/css/form.css')}" rel="stylesheet">
+    <!--[if lt IE 9]>
+      <script src="//oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="//oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <nav class="navbar navbar-default navbar-static-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">WANmap</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a id="new-split-scan" href="${request.route_url('new_split_scan')}">Split Scan</a></li>
+            <li><a id="new-delta-scan" href="${request.route_url('new_delta_scan')}">Delta Scan</a></li>
+            <li><a href="${request.route_url('show_scans')}">Scans</a></li>
+            <li><a href="${request.route_url('show_scanners')}">Scanners</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+  <div class="container">
+    <div id="flash-messages" class="row"
+         tal:condition="request.session.peek_flash()">
+      <p tal:repeat="msg request.session.pop_flash()">${msg}</p>
+    </div>
+    <tal:block metal:define-slot="content" />
+  </div>
+  <script src="//oss.maxcdn.com/libs/jquery/1.10.2/jquery.min.js"></script>
+  <script src="//oss.maxcdn.com/libs/twitter-bootstrap/3.0.3/js/bootstrap.min.js"></script>
+  <script src="${request.static_url('deform:static/scripts/deform.js')}"></script>
+  <script type="text/javascript">deform.load()</script>
+  </body>
+</html>
