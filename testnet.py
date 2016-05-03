@@ -5,6 +5,8 @@ Create a network and inject scanner agents.
 
 from __future__ import print_function
 
+import os
+
 from mininet.log import setLogLevel
 from mininet.net import Mininet
 from mininet.cli import CLI
@@ -54,10 +56,11 @@ def run():
 
     net.addController('c0')
     net.start()
+    celery_bin = os.environ['CELERY_BIN']
     for host in net.hosts:
         if host.name.startswith('scanner'):
-            cmd = 'C_FORCE_ROOT=yes /home/user/.virtualenvs/wanmap/bin/celery worker -A wanmap.tasks -l INFO -n scanner@{0} -Q scans.{0} &'
-            cmd = cmd.format(host.name)
+            cmd = 'C_FORCE_ROOT=yes {0} worker -A wanmap.tasks -l INFO -n scanner@{1} -Q scans.{1} &'     # noqa
+            cmd = cmd.format(celery_bin, host.name)
             host.cmd(cmd)
     router.cmd('ip route add default via 192.168.0.1 dev r0-eth0')
     root.cmd('ip route add 172.16.0.0/12 via 192.168.0.2 dev root-eth0')
