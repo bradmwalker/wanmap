@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @view_config(route_name='show_scanners', renderer='templates/scanners.pt')
 def show_scanners(request):
-    scanners = DBSession.query(Scanner).all()
+    scanners = DBSession.query(Scanner).order_by(Scanner.name).all()
     return {'scanners': scanners}
 
 
