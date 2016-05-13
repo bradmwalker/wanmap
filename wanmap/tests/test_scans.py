@@ -120,6 +120,28 @@ def test_show_scan_with_valid_timestamp(persisted_scan):
     assert response['scan'] is not None
 
 
+def test_list_scans_empty(db_session):
+    from ..scans import show_scans
+    request = DummyRequest()
+    result = show_scans(request)
+    assert result['scans'] == ()
+
+
+def test_list_scans_exist(persisted_scan):
+    from ..scans import show_scans
+    request = DummyRequest()
+    result = show_scans(request)
+    assert result['scans'] == (persisted_scan,)
+
+
+@pytest.mark.xfail(reason='Pagination not yet implemented.')
+def test_list_scans_pagination(db_session):
+    from ..scans import show_scans
+    request = DummyRequest()
+    result = show_scans(request)
+    assert len(result['scans']) == 20
+
+
 @pytest.mark.selenium
 def test_split_scan_live(base_url, selenium):
     """Quickly test a multi-scanner split scan. """
