@@ -136,10 +136,10 @@ def test_list_scans_exist(persisted_scan):
 
 @pytest.mark.xfail(reason='Pagination not yet implemented.')
 def test_list_scans_pagination(db_session):
-    from ..scans import show_scans
+    from ..scans import show_scans, SCAN_LISTING_PAGE_LENGTH
     request = DummyRequest()
     result = show_scans(request)
-    assert len(result['scans']) == 20
+    assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH
 
 
 @pytest.mark.selenium

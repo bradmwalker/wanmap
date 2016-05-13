@@ -12,6 +12,9 @@ from .schema import DBSession, User, Scan, Scanner
 from .tasks import scan_workflow
 
 
+SCAN_LISTING_PAGE_LENGTH = 20
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -138,10 +141,12 @@ def show_scan(request):
     return {'scan': scan}
 
 
-# TODO: pagination
 @view_config(route_name='show_scans', renderer='templates/scans.pt')
 def show_scans(request):
-    scans = DBSession.query(Scan).order_by(Scan.created_at.desc())[:20]
+    scans = tuple(
+        DBSession.query(Scan).
+        order_by(Scan.created_at.desc())
+        [:SCAN_LISTING_PAGE_LENGTH])
     return {'scans': scans}
 
 
