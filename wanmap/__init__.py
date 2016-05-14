@@ -22,6 +22,7 @@ def make_wsgi_app(settings):
     config.include('.console')
     config.include('.scans')
     config.include('.scanners')
+    config.include('.users')
 
     config.scan(ignore='wanmap.tests')
     return config.make_wsgi_app()
