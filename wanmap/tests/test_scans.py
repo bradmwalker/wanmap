@@ -7,6 +7,7 @@ from pyramid.httpexceptions import HTTPNotFound
 from pyramid.testing import DummyRequest
 import pytest
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
 
 
 PING_SWEEP = '-sn -PE -n'
@@ -168,3 +169,31 @@ def test_split_scan_live(base_url, selenium):
     assert 'Host: 172.16.1.1 () Status: Up' in scan_results.text
     scan_results = selenium.find_element_by_id('scanner2-results')
     assert 'Host: 172.16.2.1 () Status: Up' in scan_results.text
+
+
+@pytest.mark.selenium
+def test_delta_scan_live(base_url, selenium):
+    """Quickly test a delta scan."""
+    selenium.get(base_url)
+
+    new_scan_link = selenium.find_element_by_id('new-delta-scan')
+    new_scan_link.click()
+
+    time.sleep(3)
+    # TODO: Rename field buttons
+    nmap_options = selenium.find_element_by_name('nmap_options')
+    nmap_options.send_keys(PING_SWEEP)
+    scanner_a = Select(selenium.find_element_by_name('scanner_a'))
+    scanner_a.select_by_value('scanner1')
+    scanner_b = Select(selenium.find_element_by_name('scanner_b'))
+    scanner_b.select_by_value('scanner3')
+    scan_target = selenium.find_element_by_name('scan_target')
+    scan_target.send_keys('172.16.3.1')
+    scan_target.submit()
+
+    time.sleep(5)
+    selenium.refresh()
+    scan_results = selenium.find_element_by_id('scanner1-results')
+    assert 'Host: 172.16.3.1 () Status: Up' not in scan_results.text
+    scan_results = selenium.find_element_by_id('scanner3-results')
+    assert 'Host: 172.16.3.1 () Status: Up' in scan_results.text
