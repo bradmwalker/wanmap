@@ -8,7 +8,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, scoped_session, sessionmaker
+from sqlalchemy.orm import (
+    configure_mappers, relationship, scoped_session, sessionmaker
+)
 from sqlalchemy.schema import MetaData
 import zope.sqlalchemy
 
@@ -262,3 +264,8 @@ def get_engine(settings, keep_session=False):
         Persistable.metadata.bind = Engine
         _logger.info('Established {!r}'.format(Engine))
         return Engine
+
+
+# run configure_mappers after defining all of the models to ensure
+# all relationships can be setup
+configure_mappers()
