@@ -40,7 +40,7 @@ def make_wsgi_app(settings):
     config.add_route('show_scanners', '/scanners/')
     config.add_route('show_scanner', '/scanners/{name}/')
 
-    config.scan()
+    config.scan(ignore='wanmap.tests')
     return config.make_wsgi_app()
 
 
