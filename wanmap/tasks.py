@@ -8,9 +8,8 @@ from celery.signals import celeryd_after_setup, worker_process_init
 from celery.utils.log import get_task_logger
 from paste.deploy.loadwsgi import appconfig
 from pyramid.paster import setup_logging
-import transaction
 
-from .schema import DBSession, get_engine, Scan, Scanner, Subscan
+from .schema import Scan, Scanner, Subscan
 
 __all__ = ['scan_workflow']
 
@@ -18,6 +17,9 @@ DB_URI = 'postgresql://wanmap@/wanmap'
 
 Background = Celery()
 Background.config_from_object('wanmap.celeryconfig')
+
+engine = None
+dbsession_factory = None
 
 SUDO = '/usr/bin/sudo'
 NMAP = '/usr/bin/nmap'
@@ -29,19 +31,24 @@ _logger = get_task_logger(__name__)
 # TODO: Register Queue for hostname, and only initialize DB if console node
 @worker_process_init.connect
 def _init(signal, sender):
+    from .schema import get_engine, get_session_factory
+    global engine
+    global dbsession_factory
     here = os.path.dirname(__file__)
     settings_path = os.path.join(here, '../', 'development.ini')
     setup_logging(settings_path)
     config_uri = 'config:' + settings_path
     settings = appconfig(config_uri)
-    get_engine(settings)
+    engine = get_engine(settings)
+    dbsession_factory = get_session_factory(engine)
 
 
 # TODO: Make a group/chord out of launching subscans
 @Background.task(ignore_results=True)
 def scan_workflow(scan_time):
     _logger.info('Dispatching Scan: {}'.format(scan_time))
-    scan = DBSession.query(Scan).get(scan_time)
+    dbsession = dbsession_factory()
+    scan = dbsession.query(Scan).get(scan_time)
     nmap_options = scan.parameters.split(' ')
     for subscan in scan.subscans:
         subscan_targets = [target.target for target in subscan.targets]
@@ -66,10 +73,13 @@ def exec_nmap_scan(nmap_options, targets):
 # Need a transaction for each subscan. Scans can be written incrementally.
 @Background.task(ignore_results=True)
 def record_subscan(subscan_result, scan_time, scanner_name):
-    subscan = DBSession.query(Subscan).get((scan_time, scanner_name))
-    subscan.xml_results = subscan_result
+    import transaction
+    from .schema import get_tm_session
     with transaction.manager:
-        DBSession.add(subscan)
+        dbsession = get_tm_session(dbsession_factory, transaction.manager)
+        subscan = dbsession.query(Subscan).get((scan_time, scanner_name))
+        subscan.xml_results = subscan_result
+        dbsession.add(subscan)
 
 
 def get_scanner_interfaces():
@@ -105,6 +115,9 @@ def register_scanner(sender, instance, **kwargs):
 
 @Background.task(ignore_results=True)
 def persist_scanner(name, interfaces):
-    scanner = Scanner.create(name=name, interface_address=interfaces[0])
+    import transaction
+    from .schema import get_tm_session
     with transaction.manager:
-        DBSession.merge(scanner)
+        dbsession = get_tm_session(dbsession_factory, transaction.manager)
+        scanner = Scanner.create(name=name, interface_address=interfaces[0])
+        dbsession.merge(scanner)
