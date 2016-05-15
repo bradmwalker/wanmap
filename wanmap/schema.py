@@ -265,9 +265,9 @@ class SubscanTarget(Persistable):
     )
 
 
-def get_engine(settings):
+def get_engine(settings, prefix='sqlalchemy.'):
     _logger.info('Initializing Engine')
-    engine = engine_from_config(settings, 'sqlalchemy.')
+    engine = engine_from_config(settings, prefix)
     _logger.info('Established {!r}'.format(engine))
     return engine
 
