@@ -103,19 +103,19 @@ def test_show_scan_non_timestamp_fails():
         show_scan(request)
 
 
-def test_show_scan_nonexistent_timestamp_fails():
+def test_show_scan_nonexistent_timestamp_fails(dbsession):
     from ..scans import show_scan
     time = arrow.now().datetime
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     request.matchdict['time'] = time
     with pytest.raises(HTTPNotFound):
         show_scan(request)
 
 
-def test_show_scan_with_valid_timestamp(persisted_scan):
+def test_show_scan_with_valid_timestamp(dbsession, persisted_scan):
     from ..scans import show_scan
     time = persisted_scan.created_at
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     request.matchdict['time'] = time
     response = show_scan(request)
     assert response['scan'] is not None
@@ -123,14 +123,14 @@ def test_show_scan_with_valid_timestamp(persisted_scan):
 
 def test_list_scans_empty(dbsession):
     from ..scans import show_scans
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     result = show_scans(request)
     assert result['scans'] == ()
 
 
-def test_list_scans_exist(persisted_scan):
+def test_list_scans_exist(dbsession, persisted_scan):
     from ..scans import show_scans
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     result = show_scans(request)
     assert result['scans'] == (persisted_scan,)
 
@@ -138,7 +138,7 @@ def test_list_scans_exist(persisted_scan):
 @pytest.mark.xfail(reason='Pagination not yet implemented.')
 def test_list_scans_pagination(dbsession):
     from ..scans import show_scans, SCAN_LISTING_PAGE_LENGTH
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     result = show_scans(request)
     assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH
 

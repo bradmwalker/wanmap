@@ -39,6 +39,8 @@ def includeme(config):
     config.include('pyramid_tm')
     settings = config.get_settings()
     get_engine(settings)
+    # make request.dbsession available for use in Pyramid
+    config.add_request_method(lambda r: DBSession(), 'dbsession', reify=True)
 
 
 class User(Persistable):

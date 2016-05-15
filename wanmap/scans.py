@@ -8,7 +8,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.view import view_config
 import transaction
 
-from .schema import DBSession, User, Scan, Scanner
+from .schema import User, Scan, Scanner
 from .tasks import scan_workflow
 
 
@@ -71,7 +71,9 @@ def post_new_split_scan(request):
         return {'scan_form': e.render()}
     with transaction.manager:
         scan_id = schedule_split_scan(
-            appstruct['nmap_options'], *appstruct['scan_targets'])
+            request.dbsession,
+            appstruct['nmap_options'],
+            *appstruct['scan_targets'])
     scan_redirect = request.route_url('show_scan', time=scan_id.isoformat())
     return HTTPFound(location=scan_redirect)
 
@@ -105,7 +107,7 @@ class DeltaScanSchema(colander.Schema):
     renderer='templates/new-scan.jinja2')
 def get_new_delta_scan(request):
     scanner_names = (
-        DBSession.query(Scanner.name, Scanner.name).
+        request.dbsession.query(Scanner.name, Scanner.name).
         order_by(Scanner.name).
         all())
     scan_form = DeltaScanSchema.form(scanner_names)
@@ -118,7 +120,7 @@ def get_new_delta_scan(request):
     renderer='templates/new-scan.jinja2')
 def post_new_delta_scan(request):
     scanner_names = (
-        DBSession.query(Scanner.name, Scanner.name).
+        request.dbsession.query(Scanner.name, Scanner.name).
         order_by(Scanner.name).
         all())
     scan_form = DeltaScanSchema.form(scanner_names)
@@ -129,6 +131,7 @@ def post_new_delta_scan(request):
         return {'scan_form': e.render()}
     with transaction.manager:
         scan_id = schedule_delta_scan(
+            request.dbsession,
             appstruct['nmap_options'],
             (appstruct['scanner_a'], appstruct['scanner_b']),
             *appstruct['scan_targets'])
@@ -142,7 +145,7 @@ def show_scan(request):
         time = arrow.get(request.matchdict['time'])
     except arrow.parser.ParserError:
         raise HTTPNotFound()
-    scan = DBSession.query(Scan).get(time.datetime)
+    scan = request.dbsession.query(Scan).get(time.datetime)
     if not scan:
         raise HTTPNotFound()
     return {'scan': scan}
@@ -151,38 +154,38 @@ def show_scan(request):
 @view_config(route_name='show_scans', renderer='templates/scans.jinja2')
 def show_scans(request):
     scans = tuple(
-        DBSession.query(Scan).
+        request.dbsession.query(Scan).
         order_by(Scan.created_at.desc())
         [:SCAN_LISTING_PAGE_LENGTH])
     return {'scans': scans}
 
 
-def schedule_split_scan(nmap_options, *targets):
+def schedule_split_scan(dbsession, nmap_options, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
-    user = DBSession.query(User).get('admin')
+    user = dbsession.query(User).get('admin')
     scan = Scan.create_split(
-        DBSession, user=user, parameters=nmap_options, targets=targets)
+        dbsession, user=user, parameters=nmap_options, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.
-    DBSession.add(scan)
-    DBSession.flush()
+    dbsession.add(scan)
+    dbsession.flush()
     scan_time = scan.created_at
     scan_workflow.apply_async((scan_time,), countdown=1)
     return scan_time
 
 
-def schedule_delta_scan(nmap_options, scanner_names, *targets):
+def schedule_delta_scan(dbsession, nmap_options, scanner_names, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
-    user = DBSession.query(User).get('admin')
+    user = dbsession.query(User).get('admin')
     scan = Scan.create_delta(
-        DBSession, user=user, parameters=nmap_options,
+        dbsession, user=user, parameters=nmap_options,
         scanner_names=scanner_names, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.
-    DBSession.add(scan)
-    DBSession.flush()
+    dbsession.add(scan)
+    dbsession.flush()
     scan_time = scan.created_at
     scan_workflow.apply_async((scan_time,), countdown=1)
     return scan_time

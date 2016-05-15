@@ -6,7 +6,7 @@ from deform import Form, ValidationFailure
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.view import view_config
 
-from .schema import DBSession, Scanner, ScannerSubnet
+from .schema import Scanner, ScannerSubnet
 
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ def includeme(config):
 
 @view_config(route_name='show_scanners', renderer='templates/scanners.jinja2')
 def show_scanners(request):
-    scanners = DBSession.query(Scanner).order_by(Scanner.name).all()
+    scanners = request.dbsession.query(Scanner).order_by(Scanner.name).all()
     return {'scanners': scanners}
 
 
@@ -44,7 +44,7 @@ class ScannerSchema(colander.MappingSchema):
     renderer='templates/scanner.jinja2')
 def show_scanner(request):
     name = request.matchdict['name']
-    scanner = DBSession.query(Scanner).get(name)
+    scanner = request.dbsession.query(Scanner).get(name)
     if not scanner:
         raise HTTPNotFound
     scanner_pstruct = {
@@ -64,7 +64,7 @@ def show_scanner(request):
     renderer='templates/scanner.jinja2')
 def edit_scanner(request):
     name = request.matchdict['name']
-    scanner = DBSession.query(Scanner).get(name)
+    scanner = request.dbsession.query(Scanner).get(name)
     if not scanner:
         raise HTTPNotFound
     scanner_schema = ScannerSchema()
@@ -82,8 +82,8 @@ def edit_scanner(request):
         for subnet in appstruct['subnets']
     }
     for subnet in existing_subnets - proposed_subnets:
-        DBSession.delete(subnet)
+        request.dbsession.delete(subnet)
     for subnet in proposed_subnets:
-        DBSession.merge(subnet)
-    DBSession.merge(scanner)
+        request.dbsession.merge(subnet)
+    request.dbsession.merge(scanner)
     return {'scanner': scanner, 'scanner_form': scanner_form.render()}

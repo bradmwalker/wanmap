@@ -28,41 +28,41 @@ def test_scanner_has_connected_subnet(scanner):
     assert str(network) in subnets
 
 
-def test_show_scanner_found(persisted_scanner):
+def test_show_scanner_found(dbsession, persisted_scanner):
     from ..scanners import show_scanner
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     request.matchdict['name'] = persisted_scanner.name
     response = show_scanner(request)
     assert response['scanner'] == persisted_scanner
 
 
-def test_show_scanner_not_found(persisted_scanner):
+def test_show_scanner_not_found(dbsession, persisted_scanner):
     from ..scanners import show_scanner
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     request.matchdict['name'] = 'not' + persisted_scanner.name
     with pytest.raises(HTTPNotFound):
         show_scanner(request)
 
 
-def test_show_scanner_has_form(persisted_scanner):
+def test_show_scanner_has_form(dbsession, persisted_scanner):
     from ..scanners import show_scanner
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     request.matchdict['name'] = persisted_scanner.name
     response = show_scanner(request)
     assert response['scanner'] == persisted_scanner
 
 
-def test_show_scanners_without_scanners():
+def test_show_scanners_without_scanners(dbsession):
     from ..scanners import show_scanners
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     response = show_scanners(request)
     assert response['scanners'] == []
 
 
-def test_show_scanners_with_scanners(persisted_scanner):
+def test_show_scanners_with_scanners(dbsession, persisted_scanner):
     from ..schema import Scanner
     from ..scanners import show_scanners
-    request = DummyRequest()
+    request = DummyRequest(dbsession=dbsession)
     response = show_scanners(request)
     assert (
         response['scanners'] and
