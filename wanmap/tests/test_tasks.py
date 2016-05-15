@@ -28,16 +28,16 @@ def scanners():
 
 
 @pytest.fixture
-def persisted_scanners(db_session, scanners):
-    db_session.add_all(scanners)
-    db_session.flush()
+def persisted_scanners(dbsession, scanners):
+    dbsession.add_all(scanners)
+    dbsession.flush()
     return scanners
 
 
-def test_split_scan(db_session, scan_user, persisted_scanners):
+def test_split_scan(dbsession, scan_user, persisted_scanners):
     from ..schema import Scan
     scan = Scan.create_split(
-        session=db_session, user=scan_user, parameters=PING_SWEEP,
+        session=dbsession, user=scan_user, parameters=PING_SWEEP,
         targets=('10.0.0.0/8',))
     subscans = scan.subscans
     scanners = {subscan.scanner for subscan in subscans}

@@ -25,7 +25,7 @@ def fresh_app(app):
 
 
 @pytest.fixture
-def app(db_session):
+def app(dbsession):
     from wanmap import make_wsgi_app
     return TestApp(make_wsgi_app(settings))
 
@@ -37,13 +37,13 @@ def engine():
 
 
 @pytest.yield_fixture
-def db_session(engine):
+def dbsession(engine):
     from wanmap.schema import DBSession
     connection = engine.connect()
     trans = connection.begin()
     DBSession.configure(bind=connection)
-    _db_session = DBSession()
-    yield _db_session
-    _db_session.close()
+    _dbsession = DBSession()
+    yield _dbsession
+    _dbsession.close()
     trans.rollback()
 #    connection.invalidate()

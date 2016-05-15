@@ -22,14 +22,14 @@ def new_scan_form():
 
 
 @pytest.fixture
-def persisted_scan(db_session):
+def persisted_scan(dbsession):
     from ..schema import RemoteUser, Scan
     user = RemoteUser(name='test', role='user')
     datetime = arrow.now().datetime
     scan = Scan(
         created_at=datetime, user=user, type='split', parameters=PING_SWEEP)
-    db_session.add(scan)
-    db_session.flush()
+    dbsession.add(scan)
+    dbsession.flush()
     return scan
 
 
@@ -121,7 +121,7 @@ def test_show_scan_with_valid_timestamp(persisted_scan):
     assert response['scan'] is not None
 
 
-def test_list_scans_empty(db_session):
+def test_list_scans_empty(dbsession):
     from ..scans import show_scans
     request = DummyRequest()
     result = show_scans(request)
@@ -136,7 +136,7 @@ def test_list_scans_exist(persisted_scan):
 
 
 @pytest.mark.xfail(reason='Pagination not yet implemented.')
-def test_list_scans_pagination(db_session):
+def test_list_scans_pagination(dbsession):
     from ..scans import show_scans, SCAN_LISTING_PAGE_LENGTH
     request = DummyRequest()
     result = show_scans(request)

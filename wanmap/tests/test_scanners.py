@@ -16,9 +16,9 @@ def scanner():
 
 
 @pytest.fixture
-def persisted_scanner(db_session, scanner):
-    db_session.add(scanner)
-    db_session.flush()
+def persisted_scanner(dbsession, scanner):
+    dbsession.add(scanner)
+    dbsession.flush()
     return scanner
 
 
