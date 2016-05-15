@@ -1,5 +1,5 @@
 from pyramid.httpexceptions import HTTPFound
-from pyramid.view import view_config
+from pyramid.view import notfound_view_config, view_config
 
 
 def includeme(config):
@@ -11,3 +11,9 @@ def includeme(config):
 @view_config(route_name='root')
 def root_view(request):
     return HTTPFound(request.route_url('show_scans'))
+
+
+@notfound_view_config(renderer='templates/404.jinja2')
+def notfound_view(request):
+    request.response.status = 404
+    return {}
