@@ -18,6 +18,13 @@ SCAN_LISTING_PAGE_LENGTH = 20
 logger = logging.getLogger(__name__)
 
 
+def includeme(config):
+    config.add_route('show_scans', '/scans/')
+    config.add_route('show_scan', '/scans/{time}/')
+    config.add_route('new_split_scan', '/scans/new_split')
+    config.add_route('new_delta_scan', '/scans/new_delta')
+
+
 def is_scan_target(node, value):
     try:
         ipaddress.ip_network(value)

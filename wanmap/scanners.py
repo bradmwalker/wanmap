@@ -12,6 +12,11 @@ from .schema import DBSession, Scanner, ScannerSubnet
 logger = logging.getLogger(__name__)
 
 
+def includeme(config):
+    config.add_route('show_scanners', '/scanners/')
+    config.add_route('show_scanner', '/scanners/{name}/')
+
+
 @view_config(route_name='show_scanners', renderer='templates/scanners.pt')
 def show_scanners(request):
     scanners = DBSession.query(Scanner).order_by(Scanner.name).all()
