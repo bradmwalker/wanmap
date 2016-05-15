@@ -35,6 +35,11 @@ Persistable = declarative_base(metadata=metadata)
 Engine = None
 
 
+def includeme(config):
+    settings = config.get_settings()
+    get_engine(settings)
+
+
 class User(Persistable):
     __tablename__ = 'users'
     name = Column(String(32), primary_key=True)
