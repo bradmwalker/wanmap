@@ -4,7 +4,6 @@ import time
 import arrow
 from deform import Form, ValidationFailure
 from pyramid.httpexceptions import HTTPNotFound
-from pyramid.testing import DummyRequest
 import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
@@ -95,51 +94,45 @@ def test_post_new_split_scan(fresh_app):
     response.follow()
 
 
-def test_show_scan_non_timestamp_fails():
+def test_show_scan_non_timestamp_fails(view_request):
     from ..scans import show_scan
-    request = DummyRequest()
-    request.matchdict['time'] = 'space'
+    view_request.matchdict['time'] = 'space'
     with pytest.raises(HTTPNotFound):
-        show_scan(request)
+        show_scan(view_request)
 
 
-def test_show_scan_nonexistent_timestamp_fails(dbsession):
+def test_show_scan_nonexistent_timestamp_fails(view_request):
     from ..scans import show_scan
     time = arrow.now().datetime
-    request = DummyRequest(dbsession=dbsession)
-    request.matchdict['time'] = time
+    view_request.matchdict['time'] = time
     with pytest.raises(HTTPNotFound):
-        show_scan(request)
+        show_scan(view_request)
 
 
-def test_show_scan_with_valid_timestamp(dbsession, persisted_scan):
+def test_show_scan_with_valid_timestamp(view_request, persisted_scan):
     from ..scans import show_scan
     time = persisted_scan.created_at
-    request = DummyRequest(dbsession=dbsession)
-    request.matchdict['time'] = time
-    response = show_scan(request)
+    view_request.matchdict['time'] = time
+    response = show_scan(view_request)
     assert response['scan'] is not None
 
 
-def test_list_scans_empty(dbsession):
+def test_list_scans_empty(view_request):
     from ..scans import show_scans
-    request = DummyRequest(dbsession=dbsession)
-    result = show_scans(request)
+    result = show_scans(view_request)
     assert result['scans'] == ()
 
 
-def test_list_scans_exist(dbsession, persisted_scan):
+def test_list_scans_exist(view_request, persisted_scan):
     from ..scans import show_scans
-    request = DummyRequest(dbsession=dbsession)
-    result = show_scans(request)
+    result = show_scans(view_request)
     assert result['scans'] == (persisted_scan,)
 
 
 @pytest.mark.xfail(reason='Pagination not yet implemented.')
-def test_list_scans_pagination(dbsession):
+def test_list_scans_pagination(view_request):
     from ..scans import show_scans, SCAN_LISTING_PAGE_LENGTH
-    request = DummyRequest(dbsession=dbsession)
-    result = show_scans(request)
+    result = show_scans(view_request)
     assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH
 
 

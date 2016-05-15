@@ -2,7 +2,6 @@ import ipaddress
 import logging
 
 from pyramid.httpexceptions import HTTPNotFound
-from pyramid.testing import DummyRequest
 import pytest
 
 
@@ -28,42 +27,37 @@ def test_scanner_has_connected_subnet(scanner):
     assert str(network) in subnets
 
 
-def test_show_scanner_found(dbsession, persisted_scanner):
+def test_show_scanner_found(view_request, persisted_scanner):
     from ..scanners import show_scanner
-    request = DummyRequest(dbsession=dbsession)
-    request.matchdict['name'] = persisted_scanner.name
-    response = show_scanner(request)
+    view_request.matchdict['name'] = persisted_scanner.name
+    response = show_scanner(view_request)
     assert response['scanner'] == persisted_scanner
 
 
-def test_show_scanner_not_found(dbsession, persisted_scanner):
+def test_show_scanner_not_found(view_request, persisted_scanner):
     from ..scanners import show_scanner
-    request = DummyRequest(dbsession=dbsession)
-    request.matchdict['name'] = 'not' + persisted_scanner.name
+    view_request.matchdict['name'] = 'not' + persisted_scanner.name
     with pytest.raises(HTTPNotFound):
-        show_scanner(request)
+        show_scanner(view_request)
 
 
-def test_show_scanner_has_form(dbsession, persisted_scanner):
+def test_show_scanner_has_form(view_request, persisted_scanner):
     from ..scanners import show_scanner
-    request = DummyRequest(dbsession=dbsession)
-    request.matchdict['name'] = persisted_scanner.name
-    response = show_scanner(request)
+    view_request.matchdict['name'] = persisted_scanner.name
+    response = show_scanner(view_request)
     assert response['scanner'] == persisted_scanner
 
 
-def test_show_scanners_without_scanners(dbsession):
+def test_show_scanners_without_scanners(view_request):
     from ..scanners import show_scanners
-    request = DummyRequest(dbsession=dbsession)
-    response = show_scanners(request)
+    response = show_scanners(view_request)
     assert response['scanners'] == []
 
 
-def test_show_scanners_with_scanners(dbsession, persisted_scanner):
+def test_show_scanners_with_scanners(view_request, persisted_scanner):
     from ..schema import Scanner
     from ..scanners import show_scanners
-    request = DummyRequest(dbsession=dbsession)
-    response = show_scanners(request)
+    response = show_scanners(view_request)
     assert (
         response['scanners'] and
         all(

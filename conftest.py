@@ -3,6 +3,7 @@ import os
 
 from paste.deploy.loadwsgi import appconfig
 from pyramid.paster import setup_logging
+from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
 
@@ -15,6 +16,11 @@ config_uri = 'config:' + settings_path
 settings = appconfig(config_uri)
 
 _logger = logging.getLogger(__name__)
+
+
+@pytest.fixture
+def view_request(dbsession):
+    return DummyRequest(dbsession=dbsession)
 
 
 # Is this redundant w/o making app session-scope?
