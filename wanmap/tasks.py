@@ -10,7 +10,7 @@ from paste.deploy.loadwsgi import appconfig
 from pyramid.paster import setup_logging
 import transaction
 
-from .schema import DBSession, init_engine, Scan, Scanner, Subscan
+from .schema import DBSession, get_engine, Scan, Scanner, Subscan
 
 __all__ = ['scan_workflow']
 
@@ -34,7 +34,7 @@ def _init(signal, sender):
     setup_logging(settings_path)
     config_uri = 'config:' + settings_path
     settings = appconfig(config_uri)
-    init_engine(settings)
+    get_engine(settings)
 
 
 # TODO: Make a group/chord out of launching subscans

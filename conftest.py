@@ -32,8 +32,8 @@ def app(db_session):
 
 @pytest.fixture(scope='session')
 def engine():
-    from wanmap.schema import init_engine
-    return init_engine(settings, keep_session=True)
+    from wanmap.schema import get_engine
+    return get_engine(settings, keep_session=True)
 
 
 @pytest.yield_fixture

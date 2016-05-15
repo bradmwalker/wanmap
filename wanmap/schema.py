@@ -251,7 +251,7 @@ class SubscanTarget(Persistable):
     )
 
 
-def init_engine(settings, keep_session=False):
+def get_engine(settings, keep_session=False):
     global Engine
     if not Engine:
         _logger.info('Initializing Engine')

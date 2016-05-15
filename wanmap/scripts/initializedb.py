@@ -7,7 +7,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import CreateTable
 import transaction
 
-from ..schema import init_engine, DBSession, Persistable, User
+from ..schema import get_engine, DBSession, Persistable, User
 
 
 def usage(argv):
@@ -31,7 +31,7 @@ def main(argv=sys.argv):
     options = parse_vars(argv[2:])
     setup_logging(config_uri)
     settings = get_appsettings(config_uri, options=options)
-    init_engine(settings)
+    get_engine(settings)
     from ..schema import Engine
     Persistable.metadata.create_all(Engine)
     with transaction.manager:

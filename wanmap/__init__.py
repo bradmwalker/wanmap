@@ -3,7 +3,7 @@ import logging
 from pyramid.config import Configurator
 from pyramid.session import SignedCookieSessionFactory
 
-from .schema import init_engine
+from .schema import get_engine
 
 
 _logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 
 def main(global_config, **settings):
     """Standard web server entry point."""
-    init_engine(settings)
+    get_engine(settings)
     return make_wsgi_app(settings)
 
 
