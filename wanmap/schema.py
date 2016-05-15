@@ -36,6 +36,7 @@ Engine = None
 
 
 def includeme(config):
+    config.include('pyramid_tm')
     settings = config.get_settings()
     get_engine(settings)
 
