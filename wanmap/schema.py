@@ -253,13 +253,12 @@ class SubscanTarget(Persistable):
     )
 
 
-def get_engine(settings, keep_session=False):
+def get_engine(settings):
     global Engine
     if not Engine:
         _logger.info('Initializing Engine')
         Engine = engine_from_config(settings, 'sqlalchemy.')
-        _logger.info('Keep Session: {}'.format(keep_session))
-        zope.sqlalchemy.register(DBSession, keep_session=keep_session)
+        zope.sqlalchemy.register(DBSession)
         DBSession.configure(bind=Engine)
         Persistable.metadata.bind = Engine
         _logger.info('Established {!r}'.format(Engine))

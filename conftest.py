@@ -33,7 +33,7 @@ def app(db_session):
 @pytest.fixture(scope='session')
 def engine():
     from wanmap.schema import get_engine
-    return get_engine(settings, keep_session=True)
+    return get_engine(settings)
 
 
 @pytest.yield_fixture
