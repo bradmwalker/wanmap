@@ -1,20 +1,12 @@
 import logging
 
 from pyramid.config import Configurator
-from pyramid.events import BeforeRender, subscriber
-from pyramid.renderers import get_renderer
 from pyramid.session import SignedCookieSessionFactory
 
 from .schema import init_engine
 
 
 _logger = logging.getLogger(__name__)
-
-
-@subscriber(BeforeRender)
-def config_base_template(event):
-    base = get_renderer('templates/base.pt').implementation()
-    event.update({'base': base})
 
 
 def main(global_config, **settings):
@@ -26,7 +18,7 @@ def main(global_config, **settings):
 def make_wsgi_app(settings):
     """Configure and create a Pyramid WSGI application."""
     config = Configurator(settings=settings)
-    config.include('pyramid_chameleon')
+    config.include('pyramid_jinja2')
     session_factory = SignedCookieSessionFactory('secret')
     config.set_session_factory(session_factory)
     config.include('.console')

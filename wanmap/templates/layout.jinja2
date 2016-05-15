@@ -1,8 +1,5 @@
 <!DOCTYPE html>
-<html lang="${request.locale_name}"
-      xmlns:tal="http://xml.zope.org/namespaces/tal"
-      xmlns:metal="http://xml.zope.org/namespaces/metal"
-      metal:define-macro="base">
+<html lang="{{ request.locale_name }}">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -13,8 +10,8 @@
 
     <link href="//cdn.jsdelivr.net/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
 
-    <link href="${request.static_url('wanmap:static/theme.css')}" rel="stylesheet">
-    <link href="${request.static_url('deform:static/css/form.css')}" rel="stylesheet">
+    <link href="{{ request.static_url('wanmap:static/theme.css') }}" rel="stylesheet">
+    <link href="{{ request.static_url('deform:static/css/form.css') }}" rel="stylesheet">
     <!--[if lt IE 9]>
       <script src="//cdn.jsdelivr.net/html5shiv/3.7.3/html5shiv.min.js"></script>
       <script src="//cdn.jsdelivr.net/respond/1.4.2/respond.min.js"></script>
@@ -34,24 +31,29 @@
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li><a id="new-split-scan" href="${request.route_url('new_split_scan')}">Split Scan</a></li>
-            <li><a id="new-delta-scan" href="${request.route_url('new_delta_scan')}">Delta Scan</a></li>
-            <li><a href="${request.route_url('show_scans')}">Scans</a></li>
-            <li><a href="${request.route_url('show_scanners')}">Scanners</a></li>
+            <li><a id="new-split-scan" href="{{ request.route_url('new_split_scan') }}">Split Scan</a></li>
+            <li><a id="new-delta-scan" href="{{ request.route_url('new_delta_scan') }}">Delta Scan</a></li>
+            <li><a href="{{ request.route_url('show_scans') }}">Scans</a></li>
+            <li><a href="{{ request.route_url('show_scanners') }}">Scanners</a></li>
           </ul>
         </div><!--/.nav-collapse -->
       </div>
     </nav>
   <div class="container">
-    <div id="flash-messages" class="row"
-         tal:condition="request.session.peek_flash()">
-      <p tal:repeat="msg request.session.pop_flash()">${msg}</p>
+    {% if request.session.peek_flash() %}
+    <div id="flash-messages" class="row">
+      {% for message in request.session.pop_flash() %}
+      <p>{{ msg }}</p>
+      {% endfor %}
     </div>
-    <tal:block metal:define-slot="content" />
+    {% endif %}
+    {% block content %}
+      <p>No content</p>
+    {% endblock content %}
   </div>
   <script src="//cdn.jsdelivr.net/jquery/1.12.3/jquery.min.js"></script>
   <script src="//cdn.jsdelivr.net/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-  <script src="${request.static_url('deform:static/scripts/deform.js')}"></script>
+  <script src="{{ request.static_url('deform:static/scripts/deform.js') }}"></script>
   <script type="text/javascript">deform.load()</script>
   </body>
 </html>

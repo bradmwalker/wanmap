@@ -1,0 +1,7 @@
+{% extends "layout.jinja2" %}
+{% block content %}
+<div class="row">
+  <h4>Scanner "{{ scanner.name }}"</h4>
+  {{ scanner_form|safe }}
+</div>
+{% endblock content %}

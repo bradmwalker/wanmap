@@ -12,7 +12,7 @@ requires = [
     'arrow',
     'celery',
     'psycopg2',
-    'pyramid_chameleon',
+    'pyramid_jinja2',
     'pyramid_tm',
     'waitress',
     'zope.sqlalchemy',

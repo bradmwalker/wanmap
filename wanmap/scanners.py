@@ -17,7 +17,7 @@ def includeme(config):
     config.add_route('show_scanner', '/scanners/{name}/')
 
 
-@view_config(route_name='show_scanners', renderer='templates/scanners.pt')
+@view_config(route_name='show_scanners', renderer='templates/scanners.jinja2')
 def show_scanners(request):
     scanners = DBSession.query(Scanner).order_by(Scanner.name).all()
     return {'scanners': scanners}
@@ -41,7 +41,7 @@ class ScannerSchema(colander.MappingSchema):
 
 @view_config(
     route_name='show_scanner', request_method='GET',
-    renderer='templates/scanner.pt')
+    renderer='templates/scanner.jinja2')
 def show_scanner(request):
     name = request.matchdict['name']
     scanner = DBSession.query(Scanner).get(name)
@@ -61,7 +61,7 @@ def show_scanner(request):
 
 @view_config(
     route_name='show_scanner', request_method='POST',
-    renderer='templates/scanner.pt')
+    renderer='templates/scanner.jinja2')
 def edit_scanner(request):
     name = request.matchdict['name']
     scanner = DBSession.query(Scanner).get(name)

@@ -7,12 +7,13 @@ Chameleon==2.24
 colander==1.2
 deform==2.0a2
 iso8601==0.1.11
+Jinja2==2.8
 kombu==3.0.35
 PasteDeploy==1.5.2
 peppercorn==0.5
 psycopg2==2.6.1
 pyramid==1.7b4
-pyramid-chameleon==0.3
+pyramid-jinja2==2.6.2
 pyramid-tm==0.12.1
 python-dateutil==2.5.3
 pytz==2016.4

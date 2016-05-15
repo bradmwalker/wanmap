@@ -52,7 +52,7 @@ class SplitScanSchema(colander.Schema):
 
 @view_config(
     route_name='new_split_scan', request_method='GET',
-    renderer='templates/new-scan.pt')
+    renderer='templates/new-scan.jinja2')
 def get_new_split_scan(request):
     scan_form = SplitScanSchema.form()
     scan_form = scan_form.render({'scan_targets': ('',)})
@@ -61,7 +61,7 @@ def get_new_split_scan(request):
 
 @view_config(
     route_name='new_split_scan', request_method='POST',
-    renderer='templates/new-scan.pt')
+    renderer='templates/new-scan.jinja2')
 def post_new_split_scan(request):
     scan_form = SplitScanSchema.form()
     controls = request.POST.items()
@@ -102,7 +102,7 @@ class DeltaScanSchema(colander.Schema):
 
 @view_config(
     route_name='new_delta_scan', request_method='GET',
-    renderer='templates/new-scan.pt')
+    renderer='templates/new-scan.jinja2')
 def get_new_delta_scan(request):
     scanner_names = (
         DBSession.query(Scanner.name, Scanner.name).
@@ -115,7 +115,7 @@ def get_new_delta_scan(request):
 
 @view_config(
     route_name='new_delta_scan', request_method='POST',
-    renderer='templates/new-scan.pt')
+    renderer='templates/new-scan.jinja2')
 def post_new_delta_scan(request):
     scanner_names = (
         DBSession.query(Scanner.name, Scanner.name).
@@ -136,7 +136,7 @@ def post_new_delta_scan(request):
     return HTTPFound(location=scan_redirect)
 
 
-@view_config(route_name='show_scan', renderer='templates/scan.pt')
+@view_config(route_name='show_scan', renderer='templates/scan.jinja2')
 def show_scan(request):
     try:
         time = arrow.get(request.matchdict['time'])
@@ -148,7 +148,7 @@ def show_scan(request):
     return {'scan': scan}
 
 
-@view_config(route_name='show_scans', renderer='templates/scans.pt')
+@view_config(route_name='show_scans', renderer='templates/scans.jinja2')
 def show_scans(request):
     scans = tuple(
         DBSession.query(Scan).
