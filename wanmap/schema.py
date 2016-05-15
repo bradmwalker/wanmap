@@ -9,7 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
-    configure_mappers, relationship, scoped_session, sessionmaker
+    configure_mappers, relationship, sessionmaker
 )
 from sqlalchemy.schema import MetaData
 import zope.sqlalchemy
@@ -29,18 +29,22 @@ NAMING_CONVENTION = {
 
 _logger = logging.getLogger(__name__)
 
-DBSession = scoped_session(sessionmaker())  # No ZopeTransactionExtension?
 metadata = MetaData(naming_convention=NAMING_CONVENTION)
 Persistable = declarative_base(metadata=metadata)
-Engine = None
 
 
 def includeme(config):
     config.include('pyramid_tm')
     settings = config.get_settings()
-    get_engine(settings)
+    session_factory = get_session_factory(get_engine(settings))
+    config.registry['dbsession_factory'] = session_factory
     # make request.dbsession available for use in Pyramid
-    config.add_request_method(lambda r: DBSession(), 'dbsession', reify=True)
+    config.add_request_method(
+        # r.tm is the transaction manager used by pyramid_tm
+        lambda r: get_tm_session(session_factory, r.tm),
+        'dbsession',
+        reify=True
+    )
 
 
 class User(Persistable):
@@ -262,15 +266,10 @@ class SubscanTarget(Persistable):
 
 
 def get_engine(settings):
-    global Engine
-    if not Engine:
-        _logger.info('Initializing Engine')
-        Engine = engine_from_config(settings, 'sqlalchemy.')
-        zope.sqlalchemy.register(DBSession)
-        DBSession.configure(bind=Engine)
-        Persistable.metadata.bind = Engine
-        _logger.info('Established {!r}'.format(Engine))
-        return Engine
+    _logger.info('Initializing Engine')
+    engine = engine_from_config(settings, 'sqlalchemy.')
+    _logger.info('Established {!r}'.format(engine))
+    return engine
 
 
 def get_session_factory(connectable):

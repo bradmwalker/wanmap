@@ -38,11 +38,11 @@ def engine():
 
 @pytest.yield_fixture
 def dbsession(engine):
-    from wanmap.schema import DBSession
+    from wanmap.schema import get_session_factory
     connection = engine.connect()
     trans = connection.begin()
-    DBSession.configure(bind=connection)
-    _dbsession = DBSession()
+    session_factory = get_session_factory(connection)
+    _dbsession = session_factory()
     yield _dbsession
     _dbsession.close()
     trans.rollback()

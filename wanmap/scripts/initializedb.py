@@ -7,7 +7,9 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import CreateTable
 import transaction
 
-from ..schema import get_engine, DBSession, Persistable, User
+from ..schema import (
+    get_engine, get_session_factory, get_tm_session, Persistable, User
+)
 
 
 def usage(argv):
@@ -31,8 +33,10 @@ def main(argv=sys.argv):
     options = parse_vars(argv[2:])
     setup_logging(config_uri)
     settings = get_appsettings(config_uri, options=options)
-    get_engine(settings)
-    from ..schema import Engine
-    Persistable.metadata.create_all(Engine)
+    engine = get_engine(settings)
+    session_factory = get_session_factory(engine)
+    Persistable.metadata.create_all(engine)
+
     with transaction.manager:
-        DBSession.add(User(name='admin'))
+        dbsession = get_tm_session(session_factory, transaction.manager)
+        dbsession.add(User(name='admin'))
