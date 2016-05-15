@@ -28,6 +28,7 @@ def main(global_config, **settings):
 def make_wsgi_app(settings):
     """Configure and create a Pyramid WSGI application."""
     config = Configurator(settings=settings)
+    config.include('pyramid_chameleon')
     session_factory = SignedCookieSessionFactory('secret')
     config.set_session_factory(session_factory)
     config.add_static_view('static', 'static', cache_max_age=3600)
