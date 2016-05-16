@@ -49,3 +49,19 @@ def test_split_scan(dbsession, scan_user, persisted_scanners):
     }
     scanner_subnets = {'10.0.0.0/24', '10.0.1.0/24'}
     assert subscan_targets == scanner_subnets
+
+
+def test_create_split_scan_errors_on_no_targets(dbsession, scan_user):
+    from ..schema import Scan
+    with pytest.raises(ValueError):
+        Scan.create_split(
+            session=dbsession, user=scan_user, parameters=PING_SWEEP,
+            targets=())
+
+
+def test_create_split_scan_errors_on_no_subnet_matches(dbsession, scan_user):
+    from ..schema import Scan
+    with pytest.raises(Exception):
+        Scan.create_split(
+            session=dbsession, user=scan_user, parameters=PING_SWEEP,
+            targets=('0.0.0.0/0',))

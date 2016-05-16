@@ -152,6 +152,9 @@ class Scan(Persistable):
             order_by(ScannerSubnet.scanner_name).
             all())
 
+        if not matches:
+            raise Exception('No scanners have matching subnets assigned.')
+
         from collections import defaultdict
         scanners_targets = defaultdict(set)
         for scanner, subnet, target in matches:
