@@ -65,3 +65,16 @@ def test_create_split_scan_errors_on_no_subnet_matches(dbsession, scan_user):
         Scan.create_split(
             session=dbsession, user=scan_user, parameters=PING_SWEEP,
             targets=('0.0.0.0/0',))
+
+
+def test_create_split_host_match(dbsession, scan_user, persisted_scanners):
+    from ..schema import Scan
+    scan = Scan.create_split(
+        session=dbsession, user=scan_user, parameters=PING_SWEEP,
+        targets=('10.0.1.1',))
+    subscan_targets = {
+        target.target
+        for subscan in scan.subscans
+        for target in subscan.targets
+    }
+    assert subscan_targets == {'10.0.1.1/32'}
