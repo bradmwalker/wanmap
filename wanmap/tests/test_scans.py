@@ -79,14 +79,14 @@ def test_new_split_scan_form_unresolvable_not_allowed(new_scan_form):
 
 
 def test_new_split_scan_has_rendered_form(fresh_app):
-    response = fresh_app.get('/scans/new_split')
+    response = fresh_app.get('/scans/new-split')
     assert response.forms['scan']
 
 
 @pytest.mark.xfail(
     reason="Need to integrate sessions and attach scan to user in view")
 def test_post_new_split_scan(fresh_app):
-    response = fresh_app.get('/scans/new_split')
+    response = fresh_app.get('/scans/new-split')
     scan_form = response.forms['scan']
     scan_form['scan_target'] = '127.0.0.1'
     response = scan_form.submit('submit')
