@@ -16,8 +16,8 @@ _logger = logging.getLogger(__name__)
 @pytest.fixture
 def new_scan_form():
     """The form for creating new scans."""
-    from ..scans import SplitScanSchema
-    return Form(SplitScanSchema())
+    from ..scans import SplittingScanSchema
+    return Form(SplittingScanSchema())
 
 
 @pytest.fixture
@@ -26,68 +26,69 @@ def persisted_scan(dbsession):
     user = RemoteUser(name='test', role='user')
     datetime = arrow.now().datetime
     scan = Scan(
-        created_at=datetime, user=user, type='split', parameters=PING_SWEEP)
+        created_at=datetime, user=user, type='splitting',
+        parameters=PING_SWEEP)
     dbsession.add(scan)
     dbsession.flush()
     return scan
 
 
-def test_new_split_scan_form_requires_a_scan_target(new_scan_form):
+def test_splitting_scan_form_requires_a_scan_target(new_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP}
         new_scan_form.validate_pstruct(appstruct)
         assert exc.msg == 'Must submit at least one Scan Target.'
 
 
-def test_new_split_scan_form_targets_not_empty(new_scan_form):
+def test_splitting_scan_form_targets_not_empty(new_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('',)}
         new_scan_form.validate_pstruct(appstruct)
         assert exc.msg == 'Must submit at least one Scan Target.'
 
 
-def test_new_split_scan_form_allows_ipv4_address(new_scan_form):
+def test_splitting_scan_form_allows_ipv4_address(new_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('127.0.0.1',)}
     new_scan_form.validate_pstruct(appstruct)
 
 
-def test_new_split_scan_form_allows_ipv4_network(new_scan_form):
+def test_splitting_scan_form_allows_ipv4_network(new_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('127.0.0.0/8',)}
     new_scan_form.validate_pstruct(appstruct)
 
 
-def test_new_split_scan_form_allows_ipv6_address(new_scan_form):
+def test_splitting_scan_form_allows_ipv6_address(new_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('::1',)}
     new_scan_form.validate_pstruct(appstruct)
 
 
-def test_new_split_scan_form_allows_ipv6_network(new_scan_form):
+def test_splitting_scan_form_allows_ipv6_network(new_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('FE80::/10',)}
     new_scan_form.validate_pstruct(appstruct)
 
 
 @pytest.mark.skip
-def test_new_split_scan_form_allows_resolvable_hostname(new_scan_form):
+def test_splitting_scan_form_allows_resolvable_hostname(new_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('localhost',)}
     new_scan_form.validate_pstruct(appstruct)
 
 
 @pytest.mark.skip
-def test_new_split_scan_form_unresolvable_not_allowed(new_scan_form):
+def test_splitting_scan_form_unresolvable_not_allowed(new_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('*',)}
     new_scan_form.validate_pstruct(appstruct)
 
 
-def test_new_split_scan_has_rendered_form(fresh_app):
-    response = fresh_app.get('/scans/new-split')
-    assert response.forms['scan']
+def test_new_splitting_scan_has_rendered_form(fresh_app):
+    response = fresh_app.get('/scans/new-splitting')
+    assert response.forms['splitting-scan']
 
 
 @pytest.mark.xfail(
     reason="Need to integrate sessions and attach scan to user in view")
-def test_post_new_split_scan(fresh_app):
-    response = fresh_app.get('/scans/new-split')
-    scan_form = response.forms['scan']
+def test_post_new_splitting_scan(fresh_app):
+    response = fresh_app.get('/scans/new-splitting')
+    scan_form = response.forms['splitting-scan']
     scan_form['scan_target'] = '127.0.0.1'
     response = scan_form.submit('submit')
     assert response.status_code != 302
@@ -137,12 +138,11 @@ def test_list_scans_pagination(view_request):
 
 
 @pytest.mark.selenium
-def test_split_scan_live(base_url, selenium):
-    """Quickly test a multi-scanner split scan. """
+def test_splitting_scan_live(base_url, selenium):
     selenium.implicitly_wait(3)
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-split-scan')
+    new_scan_link = selenium.find_element_by_id('new-splitting-scan')
     new_scan_link.click()
 
     time.sleep(2)

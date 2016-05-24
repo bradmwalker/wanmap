@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def includeme(config):
     config.add_route('show_scans', '/scans/')
     config.add_route('show_scan', '/scans/{time}/')
-    config.add_route('new_split_scan', '/scans/new-split')
+    config.add_route('new_splitting_scan', '/scans/new-splitting')
     config.add_route('new_delta_scan', '/scans/new-delta')
 
 
@@ -38,39 +38,39 @@ class ScanTargets(colander.SequenceSchema):
         colander.String(), validator=is_scan_target)
 
 
-class SplitScanSchema(colander.Schema):
+class SplittingScanSchema(colander.Schema):
     nmap_options = colander.SchemaNode(colander.String())
     scan_targets = ScanTargets(
         validator=colander.Length(
             min=1, min_err='Must submit at least one Scan Target.'))
-    title = 'Distributed Network Scan'
+    title = 'Splitting Network Scan'
 
     @classmethod
     def form(cls):
-        return Form(cls(), formid='scan', buttons=('submit',))
+        return Form(cls(), formid='splitting-scan', buttons=('submit',))
 
 
 @view_config(
-    route_name='new_split_scan', request_method='GET',
+    route_name='new_splitting_scan', request_method='GET',
     renderer='templates/new-scan.jinja2')
-def get_new_split_scan(request):
-    scan_form = SplitScanSchema.form()
+def get_new_splitting_scan(request):
+    scan_form = SplittingScanSchema.form()
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'scan_form': scan_form}
 
 
 @view_config(
-    route_name='new_split_scan', request_method='POST',
+    route_name='new_splitting_scan', request_method='POST',
     renderer='templates/new-scan.jinja2')
-def post_new_split_scan(request):
-    scan_form = SplitScanSchema.form()
+def post_new_splitting_scan(request):
+    scan_form = SplittingScanSchema.form()
     controls = request.POST.items()
     try:
         appstruct = scan_form.validate(controls)
     except ValidationFailure as e:
         return {'scan_form': e.render()}
     with transaction.manager:
-        scan_id = schedule_split_scan(
+        scan_id = schedule_splitting_scan(
             request.dbsession,
             appstruct['nmap_options'],
             *appstruct['scan_targets'])
@@ -160,11 +160,11 @@ def show_scans(request):
     return {'scans': scans}
 
 
-def schedule_split_scan(dbsession, nmap_options, *targets):
+def schedule_splitting_scan(dbsession, nmap_options, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
     user = dbsession.query(User).get('admin')
-    scan = Scan.create_split(
+    scan = Scan.create_splitting(
         dbsession, user=user, parameters=nmap_options, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.

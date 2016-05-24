@@ -125,13 +125,13 @@ class Scan(Persistable):
     subscans = relationship('Subscan', backref='scan')
 
     @classmethod
-    def create_split(cls, session, user, parameters, targets):
+    def create_splitting(cls, session, user, parameters, targets):
         created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
         scan = cls(
             created_at=created_at, user=user, parameters=parameters,
-            type='split')
+            type='splitting')
         scan.targets = [
             ScanTarget(scan=scan, target=target) for target in targets
         ]
