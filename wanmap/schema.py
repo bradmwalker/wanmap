@@ -1,4 +1,4 @@
-import ipaddress
+from ipaddress import ip_interface, ip_network
 import logging
 
 import arrow
@@ -95,7 +95,7 @@ class Scanner(Persistable):
         """Creates a scanner configured to scan its own subnet."""
 
         scanner = cls(name=name, interface=interface_address)
-        subnet = str(ipaddress.ip_interface(interface_address).network)
+        subnet = str(ip_interface(interface_address).network)
         scanner.subnets = [ScannerSubnet(scanner_name=name, subnet=subnet)]
         return scanner
 
@@ -158,8 +158,8 @@ class Scan(Persistable):
         from collections import defaultdict
         scanners_targets = defaultdict(set)
         for scanner, subnet, target in matches:
-            subnet = ipaddress.ip_network(subnet)
-            target = ipaddress.ip_network(target)
+            subnet = ip_network(subnet)
+            target = ip_network(target)
             net_intersection = (
                 subnet if subnet.prefixlen >= target.prefixlen else target)
             scanners_targets[scanner].add(str(net_intersection))
@@ -201,8 +201,8 @@ class Scan(Persistable):
 
         targets = set()
         for subnet, target in matches:
-            subnet = ipaddress.ip_network(subnet)
-            target = ipaddress.ip_network(target)
+            subnet = ip_network(subnet)
+            target = ip_network(target)
             net_intersection = (
                 subnet if subnet.prefixlen >= target.prefixlen else target)
             targets.add(str(net_intersection))

@@ -1,4 +1,4 @@
-import ipaddress
+from ipaddress import ip_network
 import logging
 
 import arrow
@@ -29,7 +29,7 @@ def includeme(config):
 
 def is_scan_target(node, value):
     try:
-        ipaddress.ip_network(value)
+        ip_network(value)
     except ValueError:
         raise colander.Invalid(
             node, 'Not an IP Address or Network'.format(value))

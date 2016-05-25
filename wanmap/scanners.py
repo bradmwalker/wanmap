@@ -1,4 +1,4 @@
-import ipaddress
+from ipaddress import ip_network
 import logging
 
 import colander
@@ -25,7 +25,7 @@ def show_scanners(request):
 
 def is_network(node, value):
     try:
-        ipaddress.ip_network(value)
+        ip_network(value)
     except ValueError:
         raise colander.Invalid(
             node, 'Not a valid IP network address'.format(value))
