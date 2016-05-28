@@ -14,8 +14,7 @@ _logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def new_scan_form():
-    """The form for creating new scans."""
+def splitting_scan_form():
     from ..scans import SplittingScanSchema
     return Form(SplittingScanSchema())
 
@@ -33,50 +32,50 @@ def persisted_scan(dbsession):
     return scan
 
 
-def test_splitting_scan_form_requires_a_scan_target(new_scan_form):
+def test_splitting_scan_form_requires_a_scan_target(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP}
-        new_scan_form.validate_pstruct(appstruct)
+        splitting_scan_form.validate_pstruct(appstruct)
         assert exc.msg == 'Must submit at least one Scan Target.'
 
 
-def test_splitting_scan_form_targets_not_empty(new_scan_form):
+def test_splitting_scan_form_targets_not_empty(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('',)}
-        new_scan_form.validate_pstruct(appstruct)
+        splitting_scan_form.validate_pstruct(appstruct)
         assert exc.msg == 'Must submit at least one Scan Target.'
 
 
-def test_splitting_scan_form_allows_ipv4_address(new_scan_form):
+def test_splitting_scan_form_allows_ipv4_address(splitting_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('127.0.0.1',)}
-    new_scan_form.validate_pstruct(appstruct)
+    splitting_scan_form.validate_pstruct(appstruct)
 
 
-def test_splitting_scan_form_allows_ipv4_network(new_scan_form):
+def test_splitting_scan_form_allows_ipv4_network(splitting_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('127.0.0.0/8',)}
-    new_scan_form.validate_pstruct(appstruct)
+    splitting_scan_form.validate_pstruct(appstruct)
 
 
-def test_splitting_scan_form_allows_ipv6_address(new_scan_form):
+def test_splitting_scan_form_allows_ipv6_address(splitting_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('::1',)}
-    new_scan_form.validate_pstruct(appstruct)
+    splitting_scan_form.validate_pstruct(appstruct)
 
 
-def test_splitting_scan_form_allows_ipv6_network(new_scan_form):
+def test_splitting_scan_form_allows_ipv6_network(splitting_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('FE80::/10',)}
-    new_scan_form.validate_pstruct(appstruct)
+    splitting_scan_form.validate_pstruct(appstruct)
 
 
 @pytest.mark.skip
-def test_splitting_scan_form_allows_resolvable_hostname(new_scan_form):
+def test_splitting_scan_form_allows_resolvable_hostname(splitting_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('localhost',)}
-    new_scan_form.validate_pstruct(appstruct)
+    splitting_scan_form.validate_pstruct(appstruct)
 
 
 @pytest.mark.skip
-def test_splitting_scan_form_unresolvable_not_allowed(new_scan_form):
+def test_splitting_scan_form_unresolvable_not_allowed(splitting_scan_form):
     appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('*',)}
-    new_scan_form.validate_pstruct(appstruct)
+    splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_new_splitting_scan_has_rendered_form(fresh_app):
