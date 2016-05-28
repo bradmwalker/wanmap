@@ -8,7 +8,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.view import view_config
 import transaction
 
-from .schema import User, Scan, Scanner
+from .schema import User, Scan, Scanner, ScannerSubnet
 from .tasks import scan_workflow
 
 
@@ -27,17 +27,28 @@ def includeme(config):
     config.add_route('new_delta_scan', '/scans/new-delta')
 
 
-def is_scan_target(node, value):
+def is_scan_target(value):
     try:
         ip_network(value)
+        return True
     except ValueError:
-        raise colander.Invalid(
-            node, 'Not an IP Address or Network'.format(value))
+        return False
+
+
+class ScanTarget(colander.SchemaNode):
+    schema_type = colander.String
+
+    def validator(self, node, cstruct):
+        subnets = self.bindings['subnets']
+        if not is_scan_target(cstruct):
+            raise colander.Invalid(node, 'Not an IP Address or Network')
+        if not does_target_match_subnets(cstruct, subnets):
+            raise colander.Invalid(
+                node, 'Must overlap a subnet assigned to a scanner')
 
 
 class ScanTargets(colander.SequenceSchema):
-    scan_target = colander.SchemaNode(
-        colander.String(), validator=is_scan_target)
+    scan_target = ScanTarget()
 
 
 class SplittingScanSchema(colander.Schema):
@@ -47,15 +58,17 @@ class SplittingScanSchema(colander.Schema):
             min=1, min_err='Must submit at least one Scan Target.'))
 
     @classmethod
-    def form(cls):
-        return Form(cls(), formid='splitting-scan', buttons=('submit',))
+    def form(cls, subnets):
+        schema = cls().bind(subnets=subnets)
+        return Form(schema, formid='splitting-scan', buttons=('submit',))
 
 
 @view_config(
     route_name='new_splitting_scan', request_method='GET',
     renderer='templates/new-scan.jinja2')
 def get_new_splitting_scan(request):
-    scan_form = SplittingScanSchema.form()
+    subnets = get_scanner_subnets(request.dbsession)
+    scan_form = SplittingScanSchema.form(subnets=subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
 
@@ -64,7 +77,8 @@ def get_new_splitting_scan(request):
     route_name='new_splitting_scan', request_method='POST',
     renderer='templates/new-scan.jinja2')
 def post_new_splitting_scan(request):
-    scan_form = SplittingScanSchema.form()
+    subnets = get_scanner_subnets(request.dbsession)
+    scan_form = SplittingScanSchema.form(subnets=subnets)
     controls = request.POST.items()
     try:
         appstruct = scan_form.validate(controls)
@@ -84,6 +98,16 @@ def post_new_splitting_scan(request):
 
 def get_scanner_names(dbsession):
     return {name for name, in dbsession.query(Scanner.name)}
+
+
+def get_scanner_subnets(dbsession):
+    return {subnet for subnet, in dbsession.query(ScannerSubnet.subnet)}
+
+
+def does_target_match_subnets(target, subnets):
+    target = ip_network(target)
+    subnets = tuple(map(ip_network, subnets))
+    return any(map(target.overlaps, subnets))
 
 
 @colander.deferred
@@ -123,8 +147,8 @@ class DeltaScanSchema(colander.Schema):
             raise exc
 
     @classmethod
-    def form(cls, scanner_names):
-        schema = cls().bind(scanner_names=scanner_names)
+    def form(cls, scanner_names, subnets):
+        schema = cls().bind(scanner_names=scanner_names, subnets=subnets)
         return Form(schema, formid='delta-scan', buttons=('submit',))
 
 
@@ -133,7 +157,8 @@ class DeltaScanSchema(colander.Schema):
     renderer='templates/new-scan.jinja2')
 def get_new_delta_scan(request):
     scanner_names = get_scanner_names(request.dbsession)
-    scan_form = DeltaScanSchema.form(scanner_names)
+    subnets = get_scanner_subnets(request.dbsession)
+    scan_form = DeltaScanSchema.form(scanner_names, subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
 
@@ -143,7 +168,8 @@ def get_new_delta_scan(request):
     renderer='templates/new-scan.jinja2')
 def post_new_delta_scan(request):
     scanner_names = get_scanner_names(request.dbsession)
-    scan_form = DeltaScanSchema.form(scanner_names)
+    subnets = get_scanner_subnets(request.dbsession)
+    scan_form = DeltaScanSchema.form(scanner_names, subnets)
     controls = request.POST.items()
     try:
         appstruct = scan_form.validate(controls)

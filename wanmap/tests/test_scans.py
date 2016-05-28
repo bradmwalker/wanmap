@@ -2,7 +2,7 @@ import logging
 import time
 
 import arrow
-from deform import Form, ValidationFailure
+from deform import ValidationFailure
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 from selenium.webdriver.common.keys import Keys
@@ -16,14 +16,16 @@ _logger = logging.getLogger(__name__)
 @pytest.fixture
 def splitting_scan_form():
     from ..scans import SplittingScanSchema
-    return Form(SplittingScanSchema())
+    subnets = ('10.0.0.0/24', 'fd12:3456:789a:1::/64')
+    return SplittingScanSchema.form(subnets)
 
 
 @pytest.fixture
 def delta_scan_form():
     from ..scans import DeltaScanSchema
     scanner_names = {'scanner-a', 'scanner-b'}
-    return DeltaScanSchema.form(scanner_names)
+    subnets = ('10.0.0.0/24', 'fd12:3456:789a:1::/64')
+    return DeltaScanSchema.form(scanner_names, subnets)
 
 
 @pytest.fixture
@@ -41,7 +43,7 @@ def persisted_scan(dbsession):
 
 def test_splitting_scan_form_requires_nmap_options(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
-        appstruct = {'nmap_options': '', 'scan_targets': ('127.0.0.1',)}
+        appstruct = {'nmap_options': '', 'scan_targets': ('10.0.0.0/24',)}
         splitting_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
 
@@ -61,22 +63,28 @@ def test_splitting_scan_form_targets_not_empty(splitting_scan_form):
 
 
 def test_splitting_scan_form_allows_ipv4_address(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('127.0.0.1',)}
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.0.0.1',)}
     splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_splitting_scan_form_allows_ipv4_network(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('127.0.0.0/8',)}
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.0.0.0/24',)}
     splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_splitting_scan_form_allows_ipv6_address(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('::1',)}
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ('fd12:3456:789a:1::1',)
+    }
     splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_splitting_scan_form_allows_ipv6_network(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('FE80::/10',)}
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ('fd12:3456:789a:1::/64',)
+    }
     splitting_scan_form.validate_pstruct(appstruct)
 
 
@@ -113,7 +121,7 @@ def test_delta_scan_form_requires_scanner_a_choice(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanner_a': '', 'scanner_b': 'scanner-b',
-            'scan_targets': ('127.0.0.1',)
+            'scan_targets': ('10.0.0.1',)
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
@@ -124,7 +132,7 @@ def test_delta_scan_form_requires_scanner_b_choice(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanner_a': 'scanner-a', 'scanner_b': '',
-            'scan_targets': ('127.0.0.1',)
+            'scan_targets': ('10.0.0.1',)
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
@@ -135,7 +143,7 @@ def test_delta_scan_form_requires_distinct_scanner_choices(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanner_a': 'scanner-a', 'scanner_b': 'scanner-a',
-            'scan_targets': ('127.0.0.1',)
+            'scan_targets': ('10.0.0.1',)
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Must be different from Scanner A' in exc.value.render()
