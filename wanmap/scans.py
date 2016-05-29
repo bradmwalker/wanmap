@@ -82,10 +82,17 @@ def post_new_splitting_scan(request):
     return HTTPFound(location=scan_redirect)
 
 
+def get_scanner_names(dbsession):
+    return {name for name, in dbsession.query(Scanner.name)}
+
+
 @colander.deferred
 def deferred_scanner_select_widget(node, kw):
-    scanner_names = kw.get('scanner_names', ())
-    return widget.SelectWidget(values=scanner_names)
+    scanner_names = sorted(kw.get('scanner_names', set()))
+    scanner_values = (
+        (('', '- Select -'),) +
+        tuple(zip(scanner_names, scanner_names)))
+    return widget.SelectWidget(values=scanner_values)
 
 
 class DeltaScanSchema(colander.Schema):
@@ -100,7 +107,6 @@ class DeltaScanSchema(colander.Schema):
 
     @classmethod
     def form(cls, scanner_names):
-        scanner_names.insert(0, ('select', 'Select Scanner'))
         schema = cls().bind(scanner_names=scanner_names)
         return Form(schema, formid='delta-scan', buttons=('submit',))
 
@@ -109,10 +115,7 @@ class DeltaScanSchema(colander.Schema):
     route_name='new_delta_scan', request_method='GET',
     renderer='templates/new-scan.jinja2')
 def get_new_delta_scan(request):
-    scanner_names = (
-        request.dbsession.query(Scanner.name, Scanner.name).
-        order_by(Scanner.name).
-        all())
+    scanner_names = get_scanner_names(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
@@ -122,10 +125,7 @@ def get_new_delta_scan(request):
     route_name='new_delta_scan', request_method='POST',
     renderer='templates/new-scan.jinja2')
 def post_new_delta_scan(request):
-    scanner_names = (
-        request.dbsession.query(Scanner.name, Scanner.name).
-        order_by(Scanner.name).
-        all())
+    scanner_names = get_scanner_names(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names)
     controls = request.POST.items()
     try:
