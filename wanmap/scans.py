@@ -115,6 +115,13 @@ class DeltaScanSchema(colander.Schema):
         validator=colander.Length(
             min=1, min_err='Must submit at least one Scan Target.'))
 
+    def validator(self, node, cstruct):
+        scanner_a, scanner_b = cstruct['scanner_a'], cstruct['scanner_b']
+        if scanner_a and scanner_b and scanner_a == scanner_b:
+            exc = colander.Invalid(node)
+            exc['scanner_b'] = 'Must be different from Scanner A'
+            raise exc
+
     @classmethod
     def form(cls, scanner_names):
         schema = cls().bind(scanner_names=scanner_names)
