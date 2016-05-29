@@ -32,6 +32,13 @@ def persisted_scan(dbsession):
     return scan
 
 
+def test_splitting_scan_form_requires_nmap_options(splitting_scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {'nmap_options': '', 'scan_targets': ('127.0.0.1',)}
+        splitting_scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
+
+
 def test_splitting_scan_form_requires_a_scan_target(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP}
