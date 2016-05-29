@@ -12,6 +12,8 @@ from .schema import User, Scan, Scanner
 from .tasks import scan_workflow
 
 
+SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
+DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
 SCAN_LISTING_PAGE_LENGTH = 20
 
 
@@ -43,7 +45,6 @@ class SplittingScanSchema(colander.Schema):
     scan_targets = ScanTargets(
         validator=colander.Length(
             min=1, min_err='Must submit at least one Scan Target.'))
-    title = 'Splitting Network Scan'
 
     @classmethod
     def form(cls):
@@ -56,7 +57,7 @@ class SplittingScanSchema(colander.Schema):
 def get_new_splitting_scan(request):
     scan_form = SplittingScanSchema.form()
     scan_form = scan_form.render({'scan_targets': ('',)})
-    return {'scan_form': scan_form}
+    return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
 
 
 @view_config(
@@ -68,7 +69,10 @@ def post_new_splitting_scan(request):
     try:
         appstruct = scan_form.validate(controls)
     except ValidationFailure as e:
-        return {'scan_form': e.render()}
+        return {
+            'form_title': SPLITTING_SCAN_FORM_TITLE,
+            'scan_form': e.render()
+        }
     with transaction.manager:
         scan_id = schedule_splitting_scan(
             request.dbsession,
@@ -93,7 +97,6 @@ class DeltaScanSchema(colander.Schema):
     scan_targets = ScanTargets(
         validator=colander.Length(
             min=1, min_err='Must submit at least one Scan Target.'))
-    title = 'Delta Network Scan'
 
     @classmethod
     def form(cls, scanner_names):
@@ -112,7 +115,7 @@ def get_new_delta_scan(request):
         all())
     scan_form = DeltaScanSchema.form(scanner_names)
     scan_form = scan_form.render({'scan_targets': ('',)})
-    return {'scan_form': scan_form}
+    return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
 
 
 @view_config(
@@ -128,7 +131,10 @@ def post_new_delta_scan(request):
     try:
         appstruct = scan_form.validate(controls)
     except ValidationFailure as e:
-        return {'scan_form': e.render()}
+        return {
+            'form_title': DELTA_SCAN_FORM_TITLE,
+            'scan_form': e.render()
+        }
     with transaction.manager:
         scan_id = schedule_delta_scan(
             request.dbsession,
