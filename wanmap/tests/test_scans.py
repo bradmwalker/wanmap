@@ -36,14 +36,14 @@ def test_splitting_scan_form_requires_a_scan_target(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP}
         splitting_scan_form.validate_pstruct(appstruct)
-        assert exc.msg == 'Must submit at least one Scan Target.'
+    assert 'Must submit at least one Scan Target.' in exc.value.render()
 
 
 def test_splitting_scan_form_targets_not_empty(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('',)}
         splitting_scan_form.validate_pstruct(appstruct)
-        assert exc.msg == 'Must submit at least one Scan Target.'
+    assert 'Required' in exc.value.render()
 
 
 def test_splitting_scan_form_allows_ipv4_address(splitting_scan_form):
