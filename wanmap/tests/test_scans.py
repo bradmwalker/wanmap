@@ -20,6 +20,13 @@ def splitting_scan_form():
 
 
 @pytest.fixture
+def delta_scan_form():
+    from ..scans import DeltaScanSchema
+    scanner_names = {'scanner-a', 'scanner-b'}
+    return DeltaScanSchema.form(scanner_names)
+
+
+@pytest.fixture
 def persisted_scan(dbsession):
     from ..schema import RemoteUser, Scan
     user = RemoteUser(name='test', role='user')
@@ -99,6 +106,28 @@ def test_post_new_splitting_scan(fresh_app):
     response = scan_form.submit('submit')
     assert response.status_code != 302
     response.follow()
+
+
+def test_delta_scan_form_requires_scanner_a_choice(delta_scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scanner_a': '', 'scanner_b': 'scanner-b',
+            'scan_targets': ('127.0.0.1',)
+        }
+        delta_scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
+
+
+def test_delta_scan_form_requires_scanner_b_choice(delta_scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scanner_a': 'scanner-a', 'scanner_b': '',
+            'scan_targets': ('127.0.0.1',)
+        }
+        delta_scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
 
 
 def test_show_scan_non_timestamp_fails(view_request):

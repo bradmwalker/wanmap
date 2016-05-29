@@ -95,12 +95,22 @@ def deferred_scanner_select_widget(node, kw):
     return widget.SelectWidget(values=scanner_values)
 
 
+@colander.deferred
+def deferred_scanner_select_validator(node, kw):
+    scanner_names = kw.get('scanner_names', set())
+    return colander.OneOf(scanner_names)
+
+
 class DeltaScanSchema(colander.Schema):
     nmap_options = colander.SchemaNode(colander.String())
     scanner_a = colander.SchemaNode(
-        colander.String(), widget=deferred_scanner_select_widget)
+        colander.String(),
+        widget=deferred_scanner_select_widget,
+        validator=deferred_scanner_select_validator)
     scanner_b = colander.SchemaNode(
-        colander.String(), widget=deferred_scanner_select_widget)
+        colander.String(),
+        widget=deferred_scanner_select_widget,
+        validator=deferred_scanner_select_validator)
     scan_targets = ScanTargets(
         validator=colander.Length(
             min=1, min_err='Must submit at least one Scan Target.'))
