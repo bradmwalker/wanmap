@@ -49,13 +49,13 @@ class ScanTarget(colander.SchemaNode):
 
 class ScanTargets(colander.SequenceSchema):
     scan_target = ScanTarget()
+    validator = colander.Length(
+        min=1, min_err='Must submit at least one Scan Target')
 
 
 class SplittingScanSchema(colander.Schema):
     nmap_options = colander.SchemaNode(colander.String())
-    scan_targets = ScanTargets(
-        validator=colander.Length(
-            min=1, min_err='Must submit at least one Scan Target.'))
+    scan_targets = ScanTargets()
 
     @classmethod
     def form(cls, subnets):
@@ -146,9 +146,7 @@ class ScannerPair(colander.Schema):
 class DeltaScanSchema(colander.Schema):
     nmap_options = colander.SchemaNode(colander.String())
     scanners = ScannerPair()
-    scan_targets = ScanTargets(
-        validator=colander.Length(
-            min=1, min_err='Must submit at least one Scan Target.'))
+    scan_targets = ScanTargets()
 
     @classmethod
     def form(cls, scanner_names, subnets):

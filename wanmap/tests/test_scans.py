@@ -52,7 +52,7 @@ def test_splitting_scan_form_requires_a_scan_target(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {'nmap_options': PING_SWEEP}
         splitting_scan_form.validate_pstruct(appstruct)
-    assert 'Must submit at least one Scan Target.' in exc.value.render()
+    assert 'Must submit at least one Scan Target' in exc.value.render()
 
 
 def test_splitting_scan_form_targets_not_empty(splitting_scan_form):
