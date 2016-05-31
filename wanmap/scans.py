@@ -125,8 +125,7 @@ def deferred_scanner_select_validator(node, kw):
     return colander.OneOf(scanner_names)
 
 
-class DeltaScanSchema(colander.Schema):
-    nmap_options = colander.SchemaNode(colander.String())
+class ScannerPair(colander.Schema):
     scanner_a = colander.SchemaNode(
         colander.String(),
         widget=deferred_scanner_select_widget,
@@ -135,9 +134,6 @@ class DeltaScanSchema(colander.Schema):
         colander.String(),
         widget=deferred_scanner_select_widget,
         validator=deferred_scanner_select_validator)
-    scan_targets = ScanTargets(
-        validator=colander.Length(
-            min=1, min_err='Must submit at least one Scan Target.'))
 
     def validator(self, node, cstruct):
         scanner_a, scanner_b = cstruct['scanner_a'], cstruct['scanner_b']
@@ -145,6 +141,14 @@ class DeltaScanSchema(colander.Schema):
             exc = colander.Invalid(node)
             exc['scanner_b'] = 'Must be different from Scanner A'
             raise exc
+
+
+class DeltaScanSchema(colander.Schema):
+    nmap_options = colander.SchemaNode(colander.String())
+    scanners = ScannerPair()
+    scan_targets = ScanTargets(
+        validator=colander.Length(
+            min=1, min_err='Must submit at least one Scan Target.'))
 
     @classmethod
     def form(cls, scanner_names, subnets):
@@ -182,7 +186,8 @@ def post_new_delta_scan(request):
         scan_id = schedule_delta_scan(
             request.dbsession,
             appstruct['nmap_options'],
-            (appstruct['scanner_a'], appstruct['scanner_b']),
+            (appstruct['scanners']['scanner_a'],
+             appstruct['scanners']['scanner_b']),
             *appstruct['scan_targets'])
     scan_redirect = request.route_url('show_scan', time=scan_id.isoformat())
     return HTTPFound(location=scan_redirect)
