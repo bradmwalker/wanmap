@@ -8,6 +8,8 @@ import pytest
 from webtest import TestApp
 
 
+FAKE_DNS_MAP = {'wanmap.local': '10.0.0.254'}
+
 here = os.path.dirname(__file__)
 settings_path = os.path.join(here, 'test.ini')
 setup_logging(settings_path)
@@ -53,3 +55,16 @@ def dbsession(engine):
     _dbsession.close()
     trans.rollback()
 #    connection.invalidate()
+
+
+@pytest.fixture
+def fake_dns(monkeypatch):
+
+    def _fake_dns(hostname):
+        import socket
+        ip_address = FAKE_DNS_MAP.get(hostname)
+        if ip_address is None:
+            raise socket.gaierror
+        return ip_address
+
+    monkeypatch.setattr('socket.gethostbyname', _fake_dns)
