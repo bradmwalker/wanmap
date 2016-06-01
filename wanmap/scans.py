@@ -1,5 +1,6 @@
 from ipaddress import ip_network
 import logging
+import socket
 
 import arrow
 import colander
@@ -10,7 +11,7 @@ import transaction
 
 from .schema import User, Scan, Scanner, ScannerSubnet
 from .tasks import scan_workflow
-from .util import is_ip_network
+from .util import to_ip_network
 
 
 SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
@@ -33,9 +34,11 @@ class ScanTarget(colander.SchemaNode):
 
     def validator(self, node, cstruct):
         subnets = self.bindings['subnets']
-        if not is_ip_network(cstruct):
-            raise colander.Invalid(node, 'Not an IP Address or Network')
-        if not does_target_match_subnets(cstruct, subnets):
+        try:
+            target = to_ip_network(cstruct)
+        except socket.gaierror:
+            raise colander.Invalid(node, 'Unable to resolve hostname')
+        if not does_target_match_subnets(target, subnets):
             raise colander.Invalid(
                 node, 'Must overlap a subnet assigned to a scanner')
 

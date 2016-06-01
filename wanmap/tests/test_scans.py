@@ -88,16 +88,21 @@ def test_splitting_scan_form_allows_ipv6_network(splitting_scan_form):
     splitting_scan_form.validate_pstruct(appstruct)
 
 
-@pytest.mark.skip
-def test_splitting_scan_form_allows_resolvable_hostname(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('localhost',)}
+def test_splitting_scan_form_allows_resolvable_hostname(
+    splitting_scan_form, fake_dns):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ('wanmap.local',)
+    }
     splitting_scan_form.validate_pstruct(appstruct)
 
 
-@pytest.mark.skip
-def test_splitting_scan_form_unresolvable_not_allowed(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('*',)}
-    splitting_scan_form.validate_pstruct(appstruct)
+def test_splitting_scan_form_does_not_allow_unresolvable(
+    splitting_scan_form, fake_dns):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('*',)}
+        splitting_scan_form.validate_pstruct(appstruct)
+    assert 'Unable to resolve hostname' in exc.value.render()
 
 
 def test_new_splitting_scan_has_rendered_form(fresh_app):

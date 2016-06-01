@@ -14,6 +14,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.schema import MetaData
 import zope.sqlalchemy
 
+from .util import to_ip_network
 
 # Recommended naming convention used by Alembic, as various different database
 # providers will autogenerate vastly different names making migrations more
@@ -133,7 +134,7 @@ class Scan(Persistable):
             created_at=created_at, user=user, parameters=parameters,
             type='splitting')
         scan.targets = [
-            ScanTarget(scan=scan, target=target) for target in targets
+            ScanTarget.from_field(scan, target) for target in targets
         ]
         session.add(scan)
         scan.subscans = scan._split_subscans(session)
@@ -142,12 +143,12 @@ class Scan(Persistable):
     def _split_subscans(self, session):
         matches = (
             session.query(
-                Scanner, ScannerSubnet.subnet, ScanTarget.target).
+                Scanner, ScannerSubnet.subnet, ScanTarget.net_block).
             join(ScannerSubnet).
             join(
                 ScanTarget,
-                ScannerSubnet.subnet.op('<<=')(ScanTarget.target) |
-                ScannerSubnet.subnet.op('>>=')(ScanTarget.target)).
+                ScannerSubnet.subnet.op('<<=')(ScanTarget.net_block) |
+                ScannerSubnet.subnet.op('>>=')(ScanTarget.net_block)).
             filter(ScanTarget.scan_created_at == self.created_at).
             order_by(ScannerSubnet.scanner_name).
             all())
@@ -179,7 +180,7 @@ class Scan(Persistable):
             created_at=created_at, user=user, parameters=parameters,
             type='delta')
         scan.targets = [
-            ScanTarget(scan=scan, target=target) for target in targets
+            ScanTarget.from_field(scan, target) for target in targets
         ]
         session.add(scan)
         scan.subscans = scan._create_delta_subscans(session, scanner_names)
@@ -187,11 +188,11 @@ class Scan(Persistable):
 
     def _create_delta_subscans(self, session, scanner_names):
         matches = (
-            session.query(ScannerSubnet.subnet, ScanTarget.target).
+            session.query(ScannerSubnet.subnet, ScanTarget.net_block).
             join(
                 ScanTarget,
-                ScannerSubnet.subnet.op('<<=')(ScanTarget.target) |
-                ScannerSubnet.subnet.op('>>=')(ScanTarget.target)).
+                ScannerSubnet.subnet.op('<<=')(ScanTarget.net_block) |
+                ScannerSubnet.subnet.op('>>=')(ScanTarget.net_block)).
             filter(ScanTarget.scan_created_at == self.created_at).
             order_by(ScannerSubnet.scanner_name).
             all())
@@ -221,8 +222,17 @@ class ScanTarget(Persistable):
     scan_created_at = Column(
         DateTime(timezone=True), ForeignKey('scans.created_at'),
         primary_key=True)
-    target = Column(postgresql.INET, primary_key=True)
+    net_block = Column(postgresql.INET, primary_key=True)
+    hostname = Column(String(255))
     # Maps to multiple targets of one nmap instance
+
+    @classmethod
+    def from_field(cls, scan, target):
+        hostname, net_block = target, to_ip_network(target)
+        if hostname != net_block:
+            return cls(scan=scan, net_block=net_block, hostname=hostname)
+        else:
+            return cls(scan=scan, net_block=net_block)
 
 
 class Subscan(Persistable):
