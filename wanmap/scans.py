@@ -10,6 +10,7 @@ import transaction
 
 from .schema import User, Scan, Scanner, ScannerSubnet
 from .tasks import scan_workflow
+from .util import is_ip_network
 
 
 SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
@@ -27,20 +28,12 @@ def includeme(config):
     config.add_route('new_delta_scan', '/scans/new-delta')
 
 
-def is_scan_target(value):
-    try:
-        ip_network(value)
-        return True
-    except ValueError:
-        return False
-
-
 class ScanTarget(colander.SchemaNode):
     schema_type = colander.String
 
     def validator(self, node, cstruct):
         subnets = self.bindings['subnets']
-        if not is_scan_target(cstruct):
+        if not is_ip_network(cstruct):
             raise colander.Invalid(node, 'Not an IP Address or Network')
         if not does_target_match_subnets(cstruct, subnets):
             raise colander.Invalid(
