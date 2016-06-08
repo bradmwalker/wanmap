@@ -8,7 +8,10 @@ import pytest
 from webtest import TestApp
 
 
-FAKE_DNS_MAP = {'wanmap.local': '10.0.0.254'}
+FAKE_DNS_MAP = {
+    'wanmap.local': '10.0.0.254',
+    'example.com': '93.184.216.34',
+}
 
 here = os.path.dirname(__file__)
 settings_path = os.path.join(here, 'test.ini')
