@@ -1,6 +1,5 @@
 from kombu import Exchange, Queue
 
-BROKER_URL = 'amqp://guest@10.137.2.9'
 CELERY_RESULT_BACKEND = 'rpc://'
 
 CELERY_QUEUES = (

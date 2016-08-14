@@ -57,10 +57,11 @@ def run():
     net.addController('c0')
     net.start()
     celery_bin = os.environ['CELERY_BIN']
+    broker_url = os.environ['BROKER_URL']
     for host in net.hosts:
         if host.name.startswith('scanner'):
-            cmd = 'C_FORCE_ROOT=yes {0} worker -A wanmap.tasks -l INFO -n scanner@{1} -Q scans.{1} &'     # noqa
-            cmd = cmd.format(celery_bin, host.name)
+            cmd = 'C_FORCE_ROOT=yes {0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -Q scans.{2} &'     # noqa
+            cmd = cmd.format(celery_bin, broker_url, host.name)
             host.cmd(cmd)
     router.cmd('ip route add default via 192.168.0.1 dev r0-eth0')
     router.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
