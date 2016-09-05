@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 """
 Create a network and inject scanner agents.
 """
@@ -6,10 +6,10 @@ Create a network and inject scanner agents.
 from __future__ import print_function
 
 import os
+import time
 
 from mininet.log import setLogLevel
 from mininet.net import Mininet
-from mininet.cli import CLI
 from mininet.node import Node
 
 
@@ -55,7 +55,6 @@ def run():
         net.addLink(scanner, switch)
 
     net.addController('c0')
-    net.start()
     celery_bin = os.environ['CELERY_BIN']
     broker_url = os.environ['BROKER_URL']
     for host in net.hosts:
@@ -68,8 +67,12 @@ def run():
     router.cmd('iptables -A FORWARD -d 172.16.3.0/24 -j DROP')
     router.cmd('iptables -A INPUT ! -i r0-eth3 -d 172.16.3.1 -j DROP')
     root.cmd('ip route add 172.16.0.0/12 via 192.168.0.2 dev root-eth0')
-    CLI(net)
-    net.stop()
+    net.run(_block_indefinitely)
+
+
+def _block_indefinitely():
+    while True:
+        time.sleep(1)
 
 
 if __name__ == '__main__':
