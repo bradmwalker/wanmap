@@ -32,7 +32,7 @@ def main(argv=sys.argv):
 
     options = parse_vars(argv[2:])
     setup_logging(config_uri)
-    settings = get_appsettings(config_uri, options=options)
+    settings = get_appsettings(config_uri, name='wanmap', options=options)
     engine = get_engine(settings)
     session_factory = get_session_factory(engine)
     Persistable.metadata.create_all(engine)

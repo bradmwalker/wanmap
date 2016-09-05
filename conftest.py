@@ -15,7 +15,7 @@ FAKE_DNS_MAP = {
 here = os.path.dirname(__file__)
 settings_path = os.path.join(here, 'test.ini')
 setup_logging(settings_path)
-settings = get_appsettings(settings_path)
+settings = get_appsettings(settings_path, name='wanmap')
 
 _logger = logging.getLogger(__name__)
 

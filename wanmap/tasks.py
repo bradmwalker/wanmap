@@ -36,7 +36,7 @@ def _init(signal, sender):
     here = os.path.dirname(__file__)
     settings_path = os.path.join(here, '../', 'development.ini')
     setup_logging(settings_path)
-    settings = get_appsettings(settings_path)
+    settings = get_appsettings(settings_path, name='wanmap')
     engine = get_engine(settings)
     dbsession_factory = get_session_factory(engine)
 
