@@ -6,8 +6,7 @@ from subprocess import PIPE, Popen
 from celery import Celery
 from celery.signals import celeryd_after_setup, worker_process_init
 from celery.utils.log import get_task_logger
-from paste.deploy.loadwsgi import appconfig
-from pyramid.paster import setup_logging
+from pyramid.paster import get_appsettings, setup_logging
 
 from .schema import Scan, Scanner, Subscan
 
@@ -37,8 +36,7 @@ def _init(signal, sender):
     here = os.path.dirname(__file__)
     settings_path = os.path.join(here, '../', 'development.ini')
     setup_logging(settings_path)
-    config_uri = 'config:' + settings_path
-    settings = appconfig(config_uri)
+    settings = get_appsettings(settings_path)
     engine = get_engine(settings)
     dbsession_factory = get_session_factory(engine)
 

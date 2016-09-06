@@ -1,8 +1,7 @@
 import logging
 import os
 
-from paste.deploy.loadwsgi import appconfig
-from pyramid.paster import setup_logging
+from pyramid.paster import get_appsettings, setup_logging
 from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
@@ -16,9 +15,7 @@ FAKE_DNS_MAP = {
 here = os.path.dirname(__file__)
 settings_path = os.path.join(here, 'test.ini')
 setup_logging(settings_path)
-
-config_uri = 'config:' + settings_path
-settings = appconfig(config_uri)
+settings = get_appsettings(settings_path)
 
 _logger = logging.getLogger(__name__)
 
