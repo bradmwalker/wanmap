@@ -8,7 +8,7 @@ from webtest import TestApp
 
 
 FAKE_DNS_MAP = {
-    'wanmap.local': '10.0.0.254',
+    'wanmap.local': '172.16.0.10',
     'example.com': '93.184.216.34',
 }
 
