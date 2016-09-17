@@ -5,12 +5,15 @@ Create a network and inject scanner agents.
 
 from __future__ import print_function, unicode_literals
 
+from ipaddress import ip_interface
 import os
 import time
 
 from mininet.log import setLogLevel
 from mininet.net import Mininet
 from mininet.node import Node
+# Circular dependency
+from mininet.link import Link
 
 CONSOLE_IP = '10.1.0.10/24'
 BROKER_URL = 'amqp://guest@10.1.0.10/'
@@ -31,8 +34,31 @@ class LinuxRouter(Node):
 def run():
     "Test linux router"
     net = Mininet()  # controller is used by s1-s2
+    net.addController('c0')
 
-    router = LinuxRouter('r0')
+    dc_gateway = ip_interface(u'10.1.0.1/24')
+    dc_subnet = dc_gateway.network
+    branch_gateway = ip_interface(u'10.2.0.1/24')
+    branch_subnet = branch_gateway.network
+
+    dc_dist = net.addHost('r0', cls=LinuxRouter, ip=str(dc_gateway))
+    branch_dist = net.addHost('r1', cls=LinuxRouter, ip=str(branch_gateway))
+
+    switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(2))
+    net.addLink(switches[0], dc_dist)
+    net.addLink(switches[1], branch_dist)
+
+    dc_to_branch = Link(
+        dc_dist, branch_dist,
+        intfName1='dc-to-branch', intfName2='branch-to-dc')
+    dc_to_branch.intf1.setIP('192.168.0.1/30')
+    dc_dist.cmd('ip route add {} via 192.168.0.2'.format(str(branch_subnet)))
+    dc_to_branch.intf2.setIP('192.168.0.2/30')
+    branch_dist.cmd('ip route add 10.0.0.0/8 via 192.168.0.1')
+    branch_dist.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
+    branch_dist.cmd('iptables -A FORWARD -d 10.2.0.0/24 -j DROP')
+    branch_dist.cmd('iptables -A INPUT ! -i r1-eth0 -d 10.2.0.1 -j DROP')
+
 
     scanners = tuple(
         net.addHost(
@@ -40,14 +66,6 @@ def run():
             ip='10.{:d}.0.254/24'.format(n),
             defaultRoute='via 10.{:d}.0.1'.format(n))
         for n in range(1, 3))
-
-    switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(1, 3))
-
-    for switch, n in zip(switches, range(1, 3)):
-        net.addLink(
-            switch, router,
-            intfName2='r0-eth{:d}'.format(n),
-            params2={'ip': '10.{:d}.0.1/24'.format(n)})
 
     for scanner, switch in zip(scanners, switches):
         net.addLink(scanner, switch)
@@ -57,16 +75,13 @@ def run():
         inNamespace=False)
     net.addLink(console, switches[0])
 
-    net.addController('c0')
     celery_bin = os.environ['CELERY_BIN']
     for host in net.hosts:
         if host.name.startswith('scanner'):
             cmd = 'C_FORCE_ROOT=yes {0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -Q scans.{2} &'     # noqa
             cmd = cmd.format(celery_bin, BROKER_URL, host.name)
             host.cmd(cmd)
-    router.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
-    router.cmd('iptables -A FORWARD -d 10.2.0.0/24 -j DROP')
-    router.cmd('iptables -A INPUT ! -i r0-eth2 -d 10.2.0.1 -j DROP')
+
     net.run(_block_indefinitely)
 
 
