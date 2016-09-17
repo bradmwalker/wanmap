@@ -30,7 +30,7 @@ class LinuxRouter(Node):
 
 def run():
     "Test linux router"
-    net = Mininet()  # controller is used by s1-s3
+    net = Mininet()  # controller is used by s1-s2
 
     router = LinuxRouter('r0')
 
@@ -39,11 +39,11 @@ def run():
             'scanner{:d}'.format(n),
             ip='172.16.{:d}.254/24'.format(n),
             defaultRoute='via 172.16.{:d}.1'.format(n))
-        for n in range(1, 4))
+        for n in range(1, 3))
 
-    switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(1, 4))
+    switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(1, 3))
 
-    for switch, n in zip(switches, range(1, 4)):
+    for switch, n in zip(switches, range(1, 3)):
         net.addLink(
             switch, router,
             intfName2='r0-eth{:d}'.format(n),
@@ -65,8 +65,8 @@ def run():
             cmd = cmd.format(celery_bin, BROKER_URL, host.name)
             host.cmd(cmd)
     router.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
-    router.cmd('iptables -A FORWARD -d 172.16.3.0/24 -j DROP')
-    router.cmd('iptables -A INPUT ! -i r0-eth3 -d 172.16.3.1 -j DROP')
+    router.cmd('iptables -A FORWARD -d 172.16.2.0/24 -j DROP')
+    router.cmd('iptables -A INPUT ! -i r0-eth2 -d 172.16.2.1 -j DROP')
     net.run(_block_indefinitely)
 
 
