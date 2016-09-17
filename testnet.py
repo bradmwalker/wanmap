@@ -12,8 +12,8 @@ from mininet.log import setLogLevel
 from mininet.net import Mininet
 from mininet.node import Node
 
-CONSOLE_IP = '172.16.1.10/24'
-BROKER_URL = 'amqp://guest@172.16.1.10/'
+CONSOLE_IP = '10.1.0.10/24'
+BROKER_URL = 'amqp://guest@10.1.0.10/'
 
 
 class LinuxRouter(Node):
@@ -37,8 +37,8 @@ def run():
     scanners = tuple(
         net.addHost(
             'scanner{:d}'.format(n),
-            ip='172.16.{:d}.254/24'.format(n),
-            defaultRoute='via 172.16.{:d}.1'.format(n))
+            ip='10.{:d}.0.254/24'.format(n),
+            defaultRoute='via 10.{:d}.0.1'.format(n))
         for n in range(1, 3))
 
     switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(1, 3))
@@ -47,13 +47,13 @@ def run():
         net.addLink(
             switch, router,
             intfName2='r0-eth{:d}'.format(n),
-            params2={'ip': '172.16.{:d}.1/24'.format(n)})
+            params2={'ip': '10.{:d}.0.1/24'.format(n)})
 
     for scanner, switch in zip(scanners, switches):
         net.addLink(scanner, switch)
 
     console = net.addHost(
-        'console', ip=CONSOLE_IP, defaultRoute='via 172.16.1.1',
+        'console', ip=CONSOLE_IP, defaultRoute='via 10.1.0.1',
         inNamespace=False)
     net.addLink(console, switches[0])
 
@@ -65,8 +65,8 @@ def run():
             cmd = cmd.format(celery_bin, BROKER_URL, host.name)
             host.cmd(cmd)
     router.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
-    router.cmd('iptables -A FORWARD -d 172.16.2.0/24 -j DROP')
-    router.cmd('iptables -A INPUT ! -i r0-eth2 -d 172.16.2.1 -j DROP')
+    router.cmd('iptables -A FORWARD -d 10.2.0.0/24 -j DROP')
+    router.cmd('iptables -A INPUT ! -i r0-eth2 -d 10.2.0.1 -j DROP')
     net.run(_block_indefinitely)
 
 
