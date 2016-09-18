@@ -104,6 +104,7 @@ develop: dev-virtualenv
 	sudo -u wanmap createdb wanmap
 	chown -R wanmap:wanmap /var/tmp/wanmap
 	cp config/*.service -t /etc/systemd/system
+	install -m 440 -o root -g root config/wanmap-agent /etc/sudoers.d
 	systemctl daemon-reload
 	sudo -u wanmap venv/bin/initialize_wanmap_db development.ini
 	systemctl start wanmap-console wanmap-fake-wan
