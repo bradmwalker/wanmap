@@ -1,0 +1,10 @@
+[Unit]
+Description=WANmap Task Queue
+Requires=postgresql.service rabbitmq-server.service
+After=postgresql.service rabbitmq-server.service network.target
+
+[Service]
+User=wanmap
+Group=wanmap
+ExecStart=/opt/wanmap/venv/bin/celery -A wanmap.tasks worker -l INFO -n console@%h -Q console
+Restart=on-failure

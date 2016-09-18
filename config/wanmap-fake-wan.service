@@ -1,0 +1,12 @@
+[Unit]
+Description=WANmap Fake WAN
+Requires=openvswitch.service
+After=openvswitch.service network.target
+
+[Service]
+Environment=PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin
+Environment=CELERY_BIN=/opt/wanmap/venv/bin/celery
+Environment=BROKER_URL=amqp://guest@100.64.0.2/
+ExecStart=/opt/wanmap/testnet.py
+ExecStopPost=/bin/mn -c
+Restart=on-failure
