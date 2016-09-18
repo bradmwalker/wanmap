@@ -7,6 +7,7 @@ from __future__ import print_function, unicode_literals
 
 from ipaddress import ip_interface
 import os
+import sys
 import time
 
 from mininet.log import setLogLevel
@@ -17,6 +18,13 @@ from mininet.link import Link
 
 CONSOLE_IP = '10.1.0.10/24'
 BROKER_URL = 'amqp://guest@10.1.0.10/'
+
+
+def main():
+    setLogLevel('info')
+    args = sys.argv[1:]
+    interactive = '-i' in args or '--interactive' in args
+    run(interactive)
 
 
 class LinuxRouter(Node):
@@ -31,7 +39,7 @@ class LinuxRouter(Node):
         super(LinuxRouter, self).terminate()
 
 
-def run():
+def run(interactive):
     "Test linux router"
     net = Mininet()  # controller is used by s1-s2
     net.addController('c0')
@@ -82,7 +90,10 @@ def run():
             cmd = cmd.format(celery_bin, BROKER_URL, host.name)
             host.cmd(cmd)
 
-    net.run(_block_indefinitely)
+    if interactive:
+        net.interact()
+    else:
+        net.run(_block_indefinitely)
 
 
 def _block_indefinitely():
@@ -91,5 +102,4 @@ def _block_indefinitely():
 
 
 if __name__ == '__main__':
-    setLogLevel('info')
-    run()
+    main()
