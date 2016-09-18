@@ -17,7 +17,10 @@ from mininet.node import Node
 from mininet.link import Link
 
 CONSOLE_IP = '10.1.0.10/24'
-BROKER_URL = 'amqp://guest@10.1.0.10/'
+INTERNAL_BROKER_URL = 'amqp://guest@10.1.0.10/'
+INTERNET_IP = '192.0.2.1'
+EXTERNAL_SCANNER_IP = '198.51.100.2'
+EXTERNAL_BROKER_URL = 'amqp://guest@192.0.2.1/'
 
 
 def main():
@@ -51,6 +54,7 @@ def run(interactive):
 
     dc_dist = net.addHost('r0', cls=LinuxRouter, ip=str(dc_gateway))
     branch_dist = net.addHost('r1', cls=LinuxRouter, ip=str(branch_gateway))
+    external_scanner = net.addHost('external', ip='198.51.100.2/30')
 
     switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(2))
     net.addLink(switches[0], dc_dist)
@@ -67,6 +71,15 @@ def run(interactive):
     branch_dist.cmd('iptables -A FORWARD -d 10.2.0.0/24 -j DROP')
     branch_dist.cmd('iptables -A INPUT ! -i r1-eth0 -d 10.2.0.1 -j DROP')
 
+    dc_to_external = Link(
+        dc_dist, external_scanner,
+        intfName1='dc-to-external', intfName2='external-to-dc')
+    dc_to_external.intf1.setIP(INTERNET_IP, prefixLen=30)
+    dc_dist.setDefaultRoute('dc-to-external')
+    dc_to_external.intf2.setIP('198.51.100.2', prefixLen=30)
+    external_scanner.setDefaultRoute('external-to-dc')
+
+    dc_dist.cmd('iptables -t nat -A PREROUTING -i dc-to-external -p tcp -m tcp --dport 5672 -j DNAT --to 10.1.0.10')
 
     scanners = tuple(
         net.addHost(
@@ -87,9 +100,14 @@ def run(interactive):
     for host in net.hosts:
         if host.name.startswith('scanner'):
             cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
-            cmd = cmd.format(celery_bin, BROKER_URL, host.name)
+            cmd = cmd.format(celery_bin, INTERNAL_BROKER_URL, host.name)
             cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
             host.cmd(cmd)
+
+    cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
+    cmd = cmd.format(celery_bin, EXTERNAL_BROKER_URL, external_scanner.name)
+    cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
+    external_scanner.cmd(cmd)
 
     if interactive:
         net.interact()
