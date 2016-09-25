@@ -1,7 +1,7 @@
 import ipaddress
 import os.path
 import re
-from subprocess import PIPE, Popen
+from subprocess import check_output
 
 from celery import Celery
 from celery.signals import celeryd_after_setup, worker_process_init
@@ -62,9 +62,7 @@ def exec_nmap_scan(scanner_name, nmap_options, targets):
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
-    nmap = Popen(nmap_command, stdout=PIPE, universal_newlines=True)
-    scan_result, err = nmap.communicate()
-    return scan_result
+    return check_output(nmap_command, universal_newlines=True)
 
 
 # Need a transaction for each subscan. Scans can be written incrementally.
@@ -81,10 +79,8 @@ def record_subscan(subscan_result, scan_time, scanner_name):
 
 def get_scanner_interfaces():
     """Returns a list of routable interface IP addresses."""
-    cmd = Popen(
-        'ip -o -f inet address',
-        stdout=PIPE, shell=True, universal_newlines=True)
-    out, _ = cmd.communicate()
+    out = check_output(
+        'ip -o -f inet address'.split(), universal_newlines=True)
 
     addresses = []
     address_regex = re.compile(r'inet ([.\d/]+) ')
