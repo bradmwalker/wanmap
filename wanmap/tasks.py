@@ -12,8 +12,6 @@ from .schema import Scan, Scanner, Subscan
 
 __all__ = ['scan_workflow']
 
-DB_URI = 'postgresql://wanmap@/wanmap'
-
 Background = Celery()
 Background.config_from_object('wanmap.celeryconfig')
 
