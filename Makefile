@@ -24,8 +24,8 @@ dev-image:
 	dnf -y --releasever=24 --nogpg \
 		--installroot=$(container_root) \
 		--downloadonly install \
-		nginx postgresql-server rabbitmq-server redis \
-		vim gcc redhat-rpm-config postgresql-devel python3-devel \
+		postgresql-server rabbitmq-server redis \
+		gcc redhat-rpm-config postgresql-devel python3-devel \
 		nmap
 	# Mininet dependencies
 	dnf -y --releasever=24 --nogpg \
@@ -35,7 +35,7 @@ dev-image:
 		iproute telnet python-setuptools libcgroup-tools \
 		ethtool help2man pyflakes pylint python-pep8 python-pexpect \
 		git pkgconfig autoconf automake libtool glibc-devel \
-		openvswitch python-ipaddress
+		openvswitch python-ipaddress which
 	# Useful
 	dnf -y --releasever=24 --nogpg \
 		--installroot=$(container_root) \
@@ -54,7 +54,8 @@ dev-image:
 	mkdir -p /var/tmp/wanmap
 	chmod 775 /var/tmp/wanmap
 
-	nginx -c $(readlink -f nginx.dev.conf)
+	dnf install -y nginx
+	nginx -c $(shell readlink -f nginx.dev.conf)
 	modprobe openvswitch
 
 	lxc-start -n wanmap-dev
@@ -65,8 +66,8 @@ dev-image-install:
 	dnf -y groupinstall 'Minimal Install'
 	# WANmap dependencies
 	dnf -y install \
-		nginx postgresql-server rabbitmq-server redis \
-		vim gcc redhat-rpm-config postgresql-devel python3-devel \
+		postgresql-server rabbitmq-server redis \
+		gcc redhat-rpm-config postgresql-devel python3-devel \
 		nmap
 	# Mininet dependencies
 	dnf -y install \
@@ -74,7 +75,7 @@ dev-image-install:
 		iproute telnet python-setuptools libcgroup-tools \
 		ethtool help2man pyflakes pylint python-pep8 python-pexpect \
 		git pkgconfig autoconf automake libtool glibc-devel \
-		openvswitch git python-ipaddress
+		openvswitch git python-ipaddress which
 	dnf -y install \
 		tcpdump lsof strace bind-utils
 	# dnf -y install socat # Doesn't install for some reason
