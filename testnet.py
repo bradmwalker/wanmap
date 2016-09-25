@@ -86,7 +86,7 @@ def run(interactive):
     celery_bin = os.environ['CELERY_BIN']
     for host in net.hosts:
         if host.name.startswith('scanner'):
-            cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -Q scans.{2}'     # noqa
+            cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
             cmd = cmd.format(celery_bin, BROKER_URL, host.name)
             cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
             host.cmd(cmd)

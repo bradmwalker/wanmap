@@ -51,15 +51,14 @@ def scan_workflow(scan_time):
     for subscan in scan.subscans:
         subscan_targets = [target.target for target in subscan.targets]
         scanner_name = subscan.scanner.name
-        queue_name = 'scans.{}'.format(scanner_name)
 
         exec_nmap_scan.apply_async(
-            (nmap_options, subscan_targets), queue=queue_name,
+            (scanner_name, nmap_options, subscan_targets),
             link=record_subscan.s(scan_time, scanner_name))
 
 
 @Background.task
-def exec_nmap_scan(nmap_options, targets):
+def exec_nmap_scan(scanner_name, nmap_options, targets):
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
@@ -95,12 +94,6 @@ def get_scanner_interfaces():
             not address.is_multicast):
             addresses.append(match.group(1))
     return addresses
-
-
-@celeryd_after_setup.connect
-def setup_direct_queue(sender, instance, **kwargs):
-    queue_name = 'scans.{0}'.format(sender)
-    instance.app.amqp.queues.select_add(queue_name)
 
 
 @celeryd_after_setup.connect
