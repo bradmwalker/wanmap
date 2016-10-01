@@ -16,6 +16,7 @@ from mininet.node import Node
 # Circular dependency
 from mininet.link import Link
 
+CELERY_PATH = os.environ['CELERY_PATH']
 CONSOLE_IP = '10.1.0.10/24'
 INTERNAL_BROKER_URL = 'amqp://guest@10.1.0.10/'
 INTERNET_IP = '192.0.2.1'
@@ -42,6 +43,16 @@ class LinuxRouter(Node):
         super(LinuxRouter, self).terminate()
 
 
+class ScannerNode(Node):
+
+    def config(self, broker_url, **params):
+        super(ScannerNode, self).config(**params)
+        cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
+        cmd = cmd.format(CELERY_PATH, broker_url, self.name)
+        cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
+        self.cmd(cmd)
+
+
 def run(interactive):
     "Test linux router"
     net = Mininet()  # controller is used by s1-s2
@@ -54,7 +65,10 @@ def run(interactive):
 
     dc_dist = net.addHost('r0', cls=LinuxRouter, ip=str(dc_gateway))
     branch_dist = net.addHost('r1', cls=LinuxRouter, ip=str(branch_gateway))
-    external_scanner = net.addHost('external', ip='198.51.100.2/30')
+    external_scanner = net.addHost(
+        'external',
+        cls=ScannerNode, broker_url=EXTERNAL_BROKER_URL,
+        ip='198.51.100.2/30')
 
     switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(2))
     net.addLink(switches[0], dc_dist)
@@ -84,6 +98,7 @@ def run(interactive):
     scanners = tuple(
         net.addHost(
             'scanner{:d}'.format(n),
+            cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='10.{:d}.0.254/24'.format(n),
             defaultRoute='via 10.{:d}.0.1'.format(n))
         for n in range(1, 3))
@@ -95,19 +110,6 @@ def run(interactive):
         'console', ip=CONSOLE_IP, defaultRoute='via 10.1.0.1',
         inNamespace=False)
     net.addLink(console, switches[0])
-
-    celery_bin = os.environ['CELERY_BIN']
-    for host in net.hosts:
-        if host.name.startswith('scanner'):
-            cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
-            cmd = cmd.format(celery_bin, INTERNAL_BROKER_URL, host.name)
-            cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
-            host.cmd(cmd)
-
-    cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
-    cmd = cmd.format(celery_bin, EXTERNAL_BROKER_URL, external_scanner.name)
-    cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
-    external_scanner.cmd(cmd)
 
     if interactive:
         net.interact()
