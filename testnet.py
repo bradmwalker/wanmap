@@ -85,10 +85,7 @@ def run(interactive):
     dc_to_branch.intf1.setIP('192.168.0.1/30')
     dc_dist.cmd('ip route add {} via 192.168.0.2'.format(str(branch_subnet)))
     dc_to_branch.intf2.setIP('192.168.0.2/30')
-    branch_dist.cmd('ip route add 10.0.0.0/8 via 192.168.0.1')
-    branch_dist.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
-    branch_dist.cmd('iptables -A FORWARD -d 10.2.0.0/24 -j DROP')
-    branch_dist.cmd('iptables -A INPUT ! -i r1-eth0 -d 10.2.0.1 -j DROP')
+    branch_dist.setDefaultRoute('via 192.168.0.1')
 
     dc_to_external = Link(
         dc_dist, external_scanner,
