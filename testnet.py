@@ -95,16 +95,17 @@ def run(interactive):
 
     dc_dist.cmd('iptables -t nat -A PREROUTING -i dc-to-external -p tcp -m tcp --dport 5672 -j DNAT --to 10.1.0.10')
 
-    scanners = tuple(
-        net.addHost(
-            'scanner{:d}'.format(n),
-            cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
-            ip='10.{:d}.0.254/24'.format(n),
-            defaultRoute='via 10.{:d}.0.1'.format(n))
-        for n in range(1, 3))
+    scanner1 = net.addHost(
+        'scanner1',
+        cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
+        ip='10.1.0.254/24', defaultRoute='via 10.1.0.1')
+    net.addLink(scanner1, switches[0])
 
-    for scanner, switch in zip(scanners, switches):
-        net.addLink(scanner, switch)
+    scanner2 = net.addHost(
+        'scanner2',
+        cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
+        ip='10.2.0.254/24', defaultRoute='via 10.2.0.1')
+    net.addLink(scanner2, switches[1])
 
     console = net.addHost(
         'console', ip=CONSOLE_IP, defaultRoute='via 10.1.0.1',
