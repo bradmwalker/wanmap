@@ -14,7 +14,7 @@ from mininet.log import setLogLevel
 from mininet.net import Mininet
 from mininet.node import Node
 # Circular dependency
-from mininet.link import Link
+from mininet.link import Link, TCLink
 
 CELERY_PATH = os.environ['CELERY_PATH']
 CONSOLE_IP = '10.1.0.10/24'
@@ -79,9 +79,10 @@ def run(interactive):
     net.addLink(switches[1], dmz_fw)
     net.addLink(switches[2], branch_dist)
 
-    dc_to_branch = Link(
+    dc_to_branch = TCLink(
         dc_dist, branch_dist,
-        intfName1='dc-to-branch', intfName2='branch-to-dc')
+        intfName1='dc-to-branch', intfName2='branch-to-dc',
+        delay=50000, bw=1.544)
     dc_to_branch.intf1.setIP('192.168.0.1/30')
     dc_dist.cmd('ip route add {} via 192.168.0.2'.format(str(branch_subnet)))
     dc_to_branch.intf2.setIP('192.168.0.2/30')
