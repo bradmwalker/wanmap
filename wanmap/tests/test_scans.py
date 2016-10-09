@@ -251,16 +251,16 @@ def test_delta_scan_live(base_url, selenium):
     nmap_options = selenium.find_element_by_name('nmap_options')
     nmap_options.send_keys(PING_SWEEP)
     scanner_a = Select(selenium.find_element_by_name('scanner_a'))
-    scanner_a.select_by_value('scanner1')
+    scanner_a.select_by_value('external')
     scanner_b = Select(selenium.find_element_by_name('scanner_b'))
-    scanner_b.select_by_value('scanner2')
+    scanner_b.select_by_value('dmzscanner')
     scan_target = selenium.find_element_by_name('scan_target')
-    scan_target.send_keys('10.2.0.1')
+    scan_target.send_keys('203.0.113.1')
     scan_target.submit()
 
     time.sleep(5)
     selenium.refresh()
-    scan_results = selenium.find_element_by_id('scanner1-results')
-    assert 'Host: 10.2.0.1 () Status: Up' not in scan_results.text
-    scan_results = selenium.find_element_by_id('scanner2-results')
-    assert 'Host: 10.2.0.1 () Status: Up' in scan_results.text
+    scan_results = selenium.find_element_by_id('external-results')
+    assert 'Host: 203.0.113.1 () Status: Up' not in scan_results.text
+    scan_results = selenium.find_element_by_id('dmzscanner-results')
+    assert 'Host: 203.0.113.1 () Status: Up' in scan_results.text
