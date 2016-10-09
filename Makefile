@@ -63,6 +63,8 @@ dev-image:
 	lxc-attach -n wanmap-dev -- make develop -C /opt/wanmap
 
 dev-image-install:
+	# Override unreachable DNS resolvers copied by the Fedora template
+	cp /dev/null /etc/resolv.conf
 	dnf -y groupinstall 'Minimal Install'
 	# WANmap dependencies
 	dnf -y install \
