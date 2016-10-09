@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 @pytest.fixture
 def splitting_scan_form():
     from ..scans import SplittingScanSchema
-    subnets = ('10.0.0.0/24', 'fd12:3456:789a:1::/64')
+    subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
     return SplittingScanSchema.form(subnets)
 
 
@@ -24,7 +24,7 @@ def splitting_scan_form():
 def delta_scan_form():
     from ..scans import DeltaScanSchema
     scanner_names = {'scanner-a', 'scanner-b'}
-    subnets = ('10.0.0.0/24', 'fd12:3456:789a:1::/64')
+    subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
     return DeltaScanSchema.form(scanner_names, subnets)
 
 
@@ -43,7 +43,7 @@ def persisted_scan(dbsession):
 
 def test_splitting_scan_form_requires_nmap_options(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
-        appstruct = {'nmap_options': '', 'scan_targets': ('10.0.0.0/24',)}
+        appstruct = {'nmap_options': '', 'scan_targets': ('10.1.0.0/24',)}
         splitting_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
 
@@ -63,12 +63,12 @@ def test_splitting_scan_form_targets_not_empty(splitting_scan_form):
 
 
 def test_splitting_scan_form_allows_ipv4_address(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.0.0.1',)}
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.1.0.1',)}
     splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_splitting_scan_form_allows_ipv4_network(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.0.0.0/24',)}
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.1.0.0/24',)}
     splitting_scan_form.validate_pstruct(appstruct)
 
 
