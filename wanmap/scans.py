@@ -18,7 +18,7 @@ SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
 DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
 SCAN_LISTING_PAGE_LENGTH = 20
 NO_MAPPED_SUBNETS_ALERT_MESSAGE = 'There are no subnets mapped. The Splitting Scan distributes scan jobs to scanners according to assigned subnets. Start scanners and/or assign subnets to the scanners.'
-
+NO_SCANNERS_ALERT_MESSAGE = 'There are no available scanners. Start two or more scanners to enable Delta Scan.'
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,8 @@ class DeltaScanSchema(colander.Schema):
     renderer='templates/new-scan.jinja2')
 def get_new_delta_scan(request):
     scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     subnets = get_scanner_subnets(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names, subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
@@ -171,6 +173,8 @@ def get_new_delta_scan(request):
     renderer='templates/new-scan.jinja2')
 def post_new_delta_scan(request):
     scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     subnets = get_scanner_subnets(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names, subnets)
     controls = request.POST.items()
