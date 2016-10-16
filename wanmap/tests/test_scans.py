@@ -196,6 +196,16 @@ def test_delta_scan_form_simultaneous_scanner_validation(delta_scan_form):
     assert 'Must be different from Scanner A' in form_html
 
 
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_delta_scan_with_two_scanners_has_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc', 'branch'})
+    response = fresh_app.request('/scans/new-delta', method=method)
+    assert response.forms['delta-scan']
+
+
 def test_show_scan_non_timestamp_fails(view_request):
     from ..scans import show_scan
     view_request.matchdict['time'] = 'space'
