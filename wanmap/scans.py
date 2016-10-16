@@ -17,6 +17,7 @@ from .util import to_ip_network
 SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
 DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
 SCAN_LISTING_PAGE_LENGTH = 20
+NO_MAPPED_SUBNETS_ALERT_MESSAGE = 'There are no subnets mapped. The Splitting Scan distributes scan jobs to scanners according to assigned subnets. Start scanners and/or assign subnets to the scanners.'
 
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,8 @@ class SplittingScanSchema(colander.Schema):
     renderer='templates/new-scan.jinja2')
 def get_new_splitting_scan(request):
     subnets = get_scanner_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
     scan_form = SplittingScanSchema.form(subnets=subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
@@ -74,6 +77,8 @@ def get_new_splitting_scan(request):
     renderer='templates/new-scan.jinja2')
 def post_new_splitting_scan(request):
     subnets = get_scanner_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
     scan_form = SplittingScanSchema.form(subnets=subnets)
     controls = request.POST.items()
     try:

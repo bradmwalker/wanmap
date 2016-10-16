@@ -1,7 +1,15 @@
 {% extends "layout.jinja2" %}
 {% block content %}
+{% if scan_form %}
 <div class="panel panel-primary">
   <div class="panel-heading"><h3 class="panel-title">{{ form_title }}</h3></div>
   <div class="panel-body">{{ scan_form|safe }}</div>
 </div>
+{% else %}
+<div class="alert alert-danger" role="alert">
+  <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+  <span class="sr-only">Error:</span>
+  {{ error_message }}
+</div>
+{% endif %}
 {% endblock content %}

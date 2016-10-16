@@ -105,8 +105,35 @@ def test_splitting_scan_form_does_not_allow_unresolvable(
     assert 'Unable to resolve hostname' in exc.value.render()
 
 
-def test_new_splitting_scan_has_rendered_form(fresh_app):
-    response = fresh_app.get('/scans/new-splitting')
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_splitting_scan_without_subnets_has_no_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_subnets',
+        lambda _: set())
+    response = fresh_app.request('/scans/new-splitting', method=method)
+    assert not response.forms
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_splitting_scan_without_subnets_alerts(
+    monkeypatch, fresh_app, method):
+    from wanmap.scans import NO_MAPPED_SUBNETS_ALERT_MESSAGE
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_subnets',
+        lambda _: set())
+    response = fresh_app.request('/scans/new-splitting', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert NO_MAPPED_SUBNETS_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_splitting_scan_with_subnets_has_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_subnets',
+        lambda _: {'10.1.0.0/24'})
+    response = fresh_app.request('/scans/new-splitting', method=method)
     assert response.forms['splitting-scan']
 
 
