@@ -219,6 +219,28 @@ def test_new_delta_scan_without_scanners_alerts(
 
 
 @pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_delta_scan_with_one_scanner_has_no_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new-delta', method=method)
+    assert not response.forms
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_delta_scan_with_one_scanner_alerts(
+    monkeypatch, fresh_app, method):
+    from wanmap.scans import ONLY_ONE_SCANNER_ALERT_MESSAGE
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new-delta', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert ONLY_ONE_SCANNER_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
 def test_new_delta_scan_with_two_scanners_has_form(
     monkeypatch, fresh_app, method):
     monkeypatch.setattr(
