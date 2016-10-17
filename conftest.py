@@ -33,7 +33,13 @@ def fresh_app(app):
 
 
 @pytest.fixture
-def app(dbsession):
+def app(monkeypatch, dbsession_factory):
+    monkeypatch.setattr(
+        'wanmap.schema.get_engine',
+        lambda _: None)
+    monkeypatch.setattr(
+        'wanmap.schema.get_session_factory',
+        lambda _: dbsession_factory)
     from wanmap import make_wsgi_app
     return TestApp(make_wsgi_app(settings))
 
@@ -45,14 +51,19 @@ def engine():
 
 
 @pytest.yield_fixture
-def dbsession(engine):
+def dbsession(dbsession_factory):
+    _dbsession = dbsession_factory()
+    yield _dbsession
+    _dbsession.close()
+
+
+@pytest.yield_fixture
+def dbsession_factory(engine):
     from wanmap.schema import get_session_factory
     connection = engine.connect()
     trans = connection.begin()
-    session_factory = get_session_factory(connection)
-    _dbsession = session_factory()
-    yield _dbsession
-    _dbsession.close()
+    _dbsession_factory = get_session_factory(connection)
+    yield _dbsession_factory
     trans.rollback()
     connection.close()
 
