@@ -78,3 +78,26 @@ def test_create_splitting_host_match(dbsession, scan_user, persisted_scanners):
         for target in subscan.targets
     }
     assert subscan_targets == {'10.0.1.1/32'}
+
+
+def test_create_delta_scan(dbsession, scan_user, persisted_scanners):
+    from wanmap.schema import Scan
+    scanner_names = tuple(scanner.name for scanner in persisted_scanners)
+    scan = Scan.create_delta(
+        session=dbsession, user=scan_user, parameters=PING_SWEEP,
+        scanner_names=scanner_names, targets=('10.0.1.1',))
+    subscan_targets = {
+        target.target
+        for subscan in scan.subscans
+        for target in subscan.targets
+    }
+    assert subscan_targets == {'10.0.1.1/32'}
+
+
+def test_create_delta_scan_errors_on_no_targets(dbsession, scan_user, persisted_scanners):
+    from ..schema import Scan
+    scanner_names = tuple(scanner.name for scanner in persisted_scanners)
+    with pytest.raises(ValueError):
+        Scan.create_delta(
+            session=dbsession, user=scan_user, parameters=PING_SWEEP,
+            scanner_names=scanner_names, targets=())
