@@ -54,7 +54,7 @@ def dbsession(engine):
     yield _dbsession
     _dbsession.close()
     trans.rollback()
-#    connection.invalidate()
+    connection.close()
 
 
 @pytest.fixture
