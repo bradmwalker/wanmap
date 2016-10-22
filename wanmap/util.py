@@ -1,4 +1,5 @@
 from ipaddress import ip_network
+from itertools import product, starmap
 from operator import attrgetter
 import socket
 
@@ -21,6 +22,15 @@ def to_ip_network(str_):
         return str_
     except ValueError:
         return socket.gethostbyname(str_)
+
+
+def intersect_network_sets(nets_a, nets_b):
+    """
+    Finds all overlapping network blocks between two sets of networks.
+    """
+    intersections = starmap(intersect_networks, product(nets_a, nets_b))
+    non_empty_intersections = set(filter(None, intersections))
+    return non_empty_intersections
 
 
 def intersect_networks(net_a, net_b):
