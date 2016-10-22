@@ -38,7 +38,7 @@ def includeme(config):
     config.add_route('new_delta_scan', '/scans/new-delta')
 
 
-class ScanTarget(colander.SchemaNode):
+class ScanTargetNode(colander.SchemaNode):
     schema_type = colander.String
 
     def validator(self, node, cstruct):
@@ -53,7 +53,7 @@ class ScanTarget(colander.SchemaNode):
 
 
 class ScanTargets(colander.SequenceSchema):
-    scan_target = ScanTarget()
+    scan_target = ScanTargetNode()
     validator = colander.Length(
         min=1, min_err='Must submit at least one Scan Target')
 
