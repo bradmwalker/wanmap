@@ -1,4 +1,5 @@
 from ipaddress import ip_network
+from operator import attrgetter
 import socket
 
 
@@ -20,3 +21,8 @@ def to_ip_network(str_):
         return str_
     except ValueError:
         return socket.gethostbyname(str_)
+
+
+def intersect_networks(net_a, net_b):
+    if net_a.overlaps(net_b):
+        return max(net_a, net_b, key=attrgetter('prefixlen'))

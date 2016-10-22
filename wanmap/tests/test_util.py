@@ -1,4 +1,6 @@
-from wanmap.util import is_ip_network, to_ip_network
+from ipaddress import ip_network
+
+from wanmap.util import intersect_networks, is_ip_network, to_ip_network
 
 
 def test_ipv4_address_is_ip_network():
@@ -46,3 +48,35 @@ def test_hostname_to_ip_network(fake_dns):
     ip_network = to_ip_network(target)
     assert target != ip_network
     assert ip_network == '93.184.216.34'
+
+
+def test_intersect_networks_nonoverlapping_v4():
+    net_a = ip_network('10.0.0.0/8')
+    net_b = ip_network('192.168.0.0/16')
+    assert intersect_networks(net_a, net_b) is None
+
+
+def test_intersect_networks_net_a_within_net_b_v4():
+    net_a = ip_network('192.168.1.0/24')
+    net_b = ip_network('192.168.0.0/16')
+    assert intersect_networks(net_a, net_b) == net_a
+
+
+def test_intersect_networks_equal_networks_v4():
+    net_a = ip_network('10.0.0.0/8')
+    net_b = ip_network('10.0.0.0/8')
+    intersection = intersect_networks(net_a, net_b)
+    assert net_a == intersection
+    assert net_b == intersection
+
+
+def test_intersect_networks_net_b_within_net_a_v4():
+    net_a = ip_network('10.0.0.0/8')
+    net_b = ip_network('10.10.0.0/16')
+    assert intersect_networks(net_a, net_b) == net_b
+
+
+def test_intersect_networks_overlapping_host_net_v4():
+    net_a = ip_network('10.0.0.0/8')
+    net_b = ip_network('10.10.10.10/32')
+    assert intersect_networks(net_a, net_b) == net_b
