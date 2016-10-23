@@ -132,8 +132,22 @@ class Scan(Persistable):
     targets = relationship('ScanTarget', backref='scan')
     subscans = relationship('Subscan', backref='scan')
 
+    __mapper_args__ = {
+        'polymorphic_identity': 'scan',
+        'polymorphic_on': 'type'
+    }
+
+
+class SplittingScan(Scan):
+    __tablename__ = 'splitting_scans'
+    created_at = Column(
+        DateTime(timezone=True), ForeignKey('scans.created_at'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'splitting'}
+
     @classmethod
-    def create_splitting(cls, session, user, parameters, targets):
+    def create(cls, session, user, parameters, targets):
         created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
@@ -166,8 +180,17 @@ class Scan(Persistable):
             if targets
         ]
 
+
+class DeltaScan(Scan):
+    __tablename__ = 'delta_scans'
+    created_at = Column(
+        DateTime(timezone=True), ForeignKey('scans.created_at'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'delta'}
+
     @classmethod
-    def create_delta(cls, session, user, parameters, scanner_names, targets):
+    def create(cls, session, user, parameters, scanner_names, targets):
         created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')

@@ -9,7 +9,9 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.view import view_config
 import transaction
 
-from .schema import User, Scan, Scanner, ScannerSubnet
+from .schema import (
+    DeltaScan, User, Scan, Scanner, ScannerSubnet, SplittingScan
+)
 from .tasks import scan_workflow
 from .util import to_ip_network
 
@@ -233,7 +235,7 @@ def schedule_splitting_scan(dbsession, nmap_options, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
     user = dbsession.query(User).get('admin')
-    scan = Scan.create_splitting(
+    scan = SplittingScan.create(
         dbsession, user=user, parameters=nmap_options, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.
@@ -248,7 +250,7 @@ def schedule_delta_scan(dbsession, nmap_options, scanner_names, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
     user = dbsession.query(User).get('admin')
-    scan = Scan.create_delta(
+    scan = DeltaScan.create(
         dbsession, user=user, parameters=nmap_options,
         scanner_names=scanner_names, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on

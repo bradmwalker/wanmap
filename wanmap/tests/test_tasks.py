@@ -2,6 +2,8 @@ import logging
 
 import pytest
 
+from wanmap.schema import DeltaScan, SplittingScan
+
 PING_SWEEP = '-sn -PE -n'
 
 _logger = logging.getLogger(__name__)
@@ -35,8 +37,7 @@ def persisted_scanners(dbsession, scanners):
 
 
 def test_splitting_scan(dbsession, scan_user, persisted_scanners):
-    from ..schema import Scan
-    scan = Scan.create_splitting(
+    scan = SplittingScan.create(
         session=dbsession, user=scan_user, parameters=PING_SWEEP,
         targets=('10.0.0.0/8',))
     subscans = scan.subscans
@@ -52,24 +53,21 @@ def test_splitting_scan(dbsession, scan_user, persisted_scanners):
 
 
 def test_create_splitting_scan_errors_on_no_targets(dbsession, scan_user):
-    from ..schema import Scan
     with pytest.raises(ValueError):
-        Scan.create_splitting(
+        SplittingScan.create(
             session=dbsession, user=scan_user, parameters=PING_SWEEP,
             targets=())
 
 
 def test_create_splitting_scan_errors_on_no_subnet_matches(dbsession, scan_user):
-    from ..schema import Scan
     with pytest.raises(Exception):
-        Scan.create_splitting(
+        SplittingScan.create(
             session=dbsession, user=scan_user, parameters=PING_SWEEP,
             targets=('0.0.0.0/0',))
 
 
 def test_create_splitting_host_match(dbsession, scan_user, persisted_scanners):
-    from ..schema import Scan
-    scan = Scan.create_splitting(
+    scan = SplittingScan.create(
         session=dbsession, user=scan_user, parameters=PING_SWEEP,
         targets=('10.0.1.1',))
     subscan_targets = {
@@ -81,9 +79,8 @@ def test_create_splitting_host_match(dbsession, scan_user, persisted_scanners):
 
 
 def test_create_delta_scan(dbsession, scan_user, persisted_scanners):
-    from wanmap.schema import Scan
     scanner_names = tuple(scanner.name for scanner in persisted_scanners)
-    scan = Scan.create_delta(
+    scan = DeltaScan.create(
         session=dbsession, user=scan_user, parameters=PING_SWEEP,
         scanner_names=scanner_names, targets=('10.0.1.1',))
     subscan_targets = {
@@ -95,9 +92,8 @@ def test_create_delta_scan(dbsession, scan_user, persisted_scanners):
 
 
 def test_create_delta_scan_errors_on_no_targets(dbsession, scan_user, persisted_scanners):
-    from ..schema import Scan
     scanner_names = tuple(scanner.name for scanner in persisted_scanners)
     with pytest.raises(ValueError):
-        Scan.create_delta(
+        DeltaScan.create(
             session=dbsession, user=scan_user, parameters=PING_SWEEP,
             scanner_names=scanner_names, targets=())
