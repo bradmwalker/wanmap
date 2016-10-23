@@ -136,7 +136,6 @@ class Scan(Persistable):
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
-        session.add(scan)
         scan.subscans = scan._split_subscans(session)
         return scan
 
@@ -178,7 +177,6 @@ class Scan(Persistable):
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
-        session.add(scan)
         scan.subscans = scan._create_delta_subscans(session, scanner_names)
         return scan
 
