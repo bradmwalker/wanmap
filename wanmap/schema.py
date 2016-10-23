@@ -160,7 +160,7 @@ class Scan(Persistable):
             raise Exception('No scanners have matching subnets assigned.')
 
         self.subscans = [
-            Subscan.create(self, scanner, set(map(str, targets)))
+            Subscan.create(self, scanner, targets)
             for scanner, targets in scanners_and_matching_targets.items()
             if targets
         ]
@@ -189,7 +189,6 @@ class Scan(Persistable):
         }
         subscan_targets = intersect_network_sets(
             scan_targets, scannable_subnets)
-        subscan_targets = set(map(str, subscan_targets))
 
         scanner_a = session.query(Scanner).get(scanner_names[0])
         scanner_b = session.query(Scanner).get(scanner_names[1])
@@ -241,6 +240,7 @@ class Subscan(Persistable):
     @classmethod
     def create(cls, scan, scanner, targets):
         subscan = cls(scan=scan, scanner=scanner)
+        targets = map(str, targets)
         subscan.targets = [
             SubscanTarget(subscan=subscan, target=target) for target in targets
         ]
