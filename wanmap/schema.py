@@ -136,7 +136,7 @@ class Scan(Persistable):
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
-        scan.subscans = scan._split_subscans(session)
+        scan._split_subscans(session)
         return scan
 
     def _split_subscans(self, session):
@@ -159,12 +159,11 @@ class Scan(Persistable):
         if not any(scanners_and_matching_targets.values()):
             raise Exception('No scanners have matching subnets assigned.')
 
-        subscans = [
+        self.subscans = [
             Subscan.create(self, scanner, set(map(str, targets)))
             for scanner, targets in scanners_and_matching_targets.items()
             if targets
         ]
-        return subscans
 
     @classmethod
     def create_delta(cls, session, user, parameters, scanner_names, targets):
@@ -177,7 +176,7 @@ class Scan(Persistable):
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
-        scan.subscans = scan._create_delta_subscans(session, scanner_names)
+        scan._create_delta_subscans(session, scanner_names)
         return scan
 
     def _create_delta_subscans(self, session, scanner_names):
@@ -195,11 +194,10 @@ class Scan(Persistable):
         scanner_a = session.query(Scanner).get(scanner_names[0])
         scanner_b = session.query(Scanner).get(scanner_names[1])
 
-        subscans = [
+        self.subscans = [
             Subscan.create(self, scanner_a, subscan_targets),
             Subscan.create(self, scanner_b, subscan_targets),
         ]
-        return subscans
 
 
 class ScanTarget(Persistable):
