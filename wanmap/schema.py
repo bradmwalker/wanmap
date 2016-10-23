@@ -151,9 +151,7 @@ class SplittingScan(Scan):
         created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
-        scan = cls(
-            created_at=created_at, user=user, parameters=parameters,
-            type='splitting')
+        scan = cls(created_at=created_at, user=user, parameters=parameters)
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
@@ -194,9 +192,7 @@ class DeltaScan(Scan):
         created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
-        scan = cls(
-            created_at=created_at, user=user, parameters=parameters,
-            type='delta')
+        scan = cls(created_at=created_at, user=user, parameters=parameters)
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]

@@ -30,12 +30,10 @@ def delta_scan_form():
 
 @pytest.fixture
 def persisted_scan(dbsession):
-    from ..schema import RemoteUser, Scan
+    from ..schema import RemoteUser, SplittingScan
     user = RemoteUser(name='test', role='user')
     datetime = arrow.now().datetime
-    scan = Scan(
-        created_at=datetime, user=user, type='splitting',
-        parameters=PING_SWEEP)
+    scan = SplittingScan(created_at=datetime, user=user, parameters=PING_SWEEP)
     dbsession.add(scan)
     dbsession.flush()
     return scan
