@@ -100,6 +100,13 @@ class Scanner(Persistable):
         scanner.subnets = [ScannerSubnet(scanner_name=name, subnet=subnet)]
         return scanner
 
+    @property
+    def subnet_blocks(self):
+        return {ip_network(subnet.subnet) for subnet in self.subnets}
+
+    def intersect_scan_targets(self, scan_targets):
+        return intersect_network_sets(scan_targets, self.subnet_blocks)
+
 
 class ScannerSubnet(Persistable):
     """The subnets managed by a scanner"""
@@ -141,19 +148,13 @@ class Scan(Persistable):
 
     def _split_subscans(self, session):
         scanners = session.query(Scanner).options(joinedload('subnets'))
-        scanner_subnet_sets = {
-            scanner: {
-                ip_network(subnet.subnet) for subnet in scanner.subnets
-            }
-            for scanner in scanners
-        }
         scan_targets = {
             ip_network(target.net_block) for target in self.targets
         }
 
         scanners_and_matching_targets = {
-            scanner: intersect_network_sets(scan_targets, scanner_subnets)
-            for scanner, scanner_subnets in scanner_subnet_sets.items()
+            scanner: scanner.intersect_scan_targets(scan_targets)
+            for scanner in scanners
         }
 
         if not any(scanners_and_matching_targets.values()):
