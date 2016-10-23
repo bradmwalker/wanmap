@@ -9,12 +9,12 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
-    configure_mappers, relationship, sessionmaker
+    configure_mappers, joinedload, relationship, sessionmaker
 )
 from sqlalchemy.schema import MetaData
 import zope.sqlalchemy
 
-from .util import to_ip_network
+from .util import intersect_network_sets, to_ip_network
 
 # Recommended naming convention used by Alembic, as various different database
 # providers will autogenerate vastly different names making migrations more
@@ -141,33 +141,29 @@ class Scan(Persistable):
         return scan
 
     def _split_subscans(self, session):
-        matches = (
-            session.query(
-                Scanner, ScannerSubnet.subnet, ScanTarget.net_block).
-            join(ScannerSubnet).
-            join(
-                ScanTarget,
-                ScannerSubnet.subnet.op('<<=')(ScanTarget.net_block) |
-                ScannerSubnet.subnet.op('>>=')(ScanTarget.net_block)).
-            filter(ScanTarget.scan_created_at == self.created_at).
-            order_by(ScannerSubnet.scanner_name).
-            all())
+        scanners = session.query(Scanner).options(joinedload('subnets'))
+        scanner_subnet_sets = {
+            scanner: {
+                ip_network(subnet.subnet) for subnet in scanner.subnets
+            }
+            for scanner in scanners
+        }
+        scan_targets = {
+            ip_network(target.net_block) for target in self.targets
+        }
 
-        if not matches:
+        scanners_and_matching_targets = {
+            scanner: intersect_network_sets(scan_targets, scanner_subnets)
+            for scanner, scanner_subnets in scanner_subnet_sets.items()
+        }
+
+        if not any(scanners_and_matching_targets.values()):
             raise Exception('No scanners have matching subnets assigned.')
 
-        from collections import defaultdict
-        scanners_targets = defaultdict(set)
-        for scanner, subnet, target in matches:
-            subnet = ip_network(subnet)
-            target = ip_network(target)
-            net_intersection = (
-                subnet if subnet.prefixlen >= target.prefixlen else target)
-            scanners_targets[scanner].add(str(net_intersection))
-
         subscans = [
-            Subscan.create(self, scanner, targets)
-            for scanner, targets in scanners_targets.items()
+            Subscan.create(self, scanner, set(map(str, targets)))
+            for scanner, targets in scanners_and_matching_targets.items()
+            if targets
         ]
         return subscans
 
@@ -187,30 +183,23 @@ class Scan(Persistable):
         return scan
 
     def _create_delta_subscans(self, session, scanner_names):
-        matches = (
-            session.query(ScannerSubnet.subnet, ScanTarget.net_block).
-            join(
-                ScanTarget,
-                ScannerSubnet.subnet.op('<<=')(ScanTarget.net_block) |
-                ScannerSubnet.subnet.op('>>=')(ScanTarget.net_block)).
-            filter(ScanTarget.scan_created_at == self.created_at).
-            order_by(ScannerSubnet.scanner_name).
-            all())
+        scannable_subnets = {
+            ip_network(subnet) for subnet,
+            in session.query(ScannerSubnet.subnet)
+        }
+        scan_targets = {
+            ip_network(target.net_block) for target in self.targets
+        }
+        subscan_targets = intersect_network_sets(
+            scan_targets, scannable_subnets)
+        subscan_targets = set(map(str, subscan_targets))
 
         scanner_a = session.query(Scanner).get(scanner_names[0])
         scanner_b = session.query(Scanner).get(scanner_names[1])
 
-        targets = set()
-        for subnet, target in matches:
-            subnet = ip_network(subnet)
-            target = ip_network(target)
-            net_intersection = (
-                subnet if subnet.prefixlen >= target.prefixlen else target)
-            targets.add(str(net_intersection))
-
         subscans = [
-            Subscan.create(self, scanner_a, targets),
-            Subscan.create(self, scanner_b, targets),
+            Subscan.create(self, scanner_a, subscan_targets),
+            Subscan.create(self, scanner_b, subscan_targets),
         ]
         return subscans
 
