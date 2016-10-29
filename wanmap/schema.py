@@ -166,8 +166,8 @@ class SplittingScan(Scan):
         if not any(scanners_and_matching_targets.values()):
             raise Exception('No scanners have matching subnets assigned.')
 
-        scan.subscans = [
-            Subscan.create(scan, scanner, matched_targets)
+        scan.subscans += [
+            Subscan.create(scanner, matched_targets)
             for scanner, matched_targets
             in scanners_and_matching_targets.items()
             if matched_targets
@@ -203,9 +203,9 @@ class DeltaScan(Scan):
         scanner_a = session.query(Scanner).get(scanner_names[0])
         scanner_b = session.query(Scanner).get(scanner_names[1])
 
-        scan.subscans = [
-            Subscan.create(scan, scanner_a, subscan_targets),
-            Subscan.create(scan, scanner_b, subscan_targets),
+        scan.subscans += [
+            Subscan.create(scanner_a, subscan_targets),
+            Subscan.create(scanner_b, subscan_targets),
         ]
         return scan
 
@@ -253,11 +253,11 @@ class Subscan(Persistable):
     targets = relationship('SubscanTarget', backref='subscan')
 
     @classmethod
-    def create(cls, scan, scanner, targets):
-        subscan = cls(scan=scan, scanner=scanner)
+    def create(cls, scanner, targets):
+        subscan = cls(scanner=scanner)
         targets = map(str, targets)
-        subscan.targets = [
-            SubscanTarget(subscan=subscan, target=target) for target in targets
+        subscan.targets += [
+            SubscanTarget(target=target) for target in targets
         ]
         return subscan
 
