@@ -148,20 +148,16 @@ class SplittingScan(Scan):
 
     @classmethod
     def create(cls, session, user, parameters, targets):
-        created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
         scan = cls(created_at=created_at, user=user, parameters=parameters)
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
-        scan._split_subscans(session)
-        return scan
-
-    def _split_subscans(self, session):
         scanners = session.query(Scanner).options(joinedload('subnets'))
         scan_targets = {
-            ip_network(target.net_block) for target in self.targets
+            ip_network(target.net_block) for target in scan.targets
         }
 
         scanners_and_matching_targets = {
@@ -172,11 +168,13 @@ class SplittingScan(Scan):
         if not any(scanners_and_matching_targets.values()):
             raise Exception('No scanners have matching subnets assigned.')
 
-        self.subscans = [
-            Subscan.create(self, scanner, targets)
-            for scanner, targets in scanners_and_matching_targets.items()
-            if targets
+        scan.subscans = [
+            Subscan.create(scan, scanner, matched_targets)
+            for scanner, matched_targets
+            in scanners_and_matching_targets.items()
+            if matched_targets
         ]
+        return scan
 
 
 class DeltaScan(Scan):
@@ -189,23 +187,19 @@ class DeltaScan(Scan):
 
     @classmethod
     def create(cls, session, user, parameters, scanner_names, targets):
-        created_at = arrow.now().datetime
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
         scan = cls(created_at=created_at, user=user, parameters=parameters)
         scan.targets = [
             ScanTarget.from_field(scan, target) for target in targets
         ]
-        scan._create_delta_subscans(session, scanner_names)
-        return scan
-
-    def _create_delta_subscans(self, session, scanner_names):
         scannable_subnets = {
             ip_network(subnet) for subnet,
             in session.query(ScannerSubnet.subnet)
         }
         scan_targets = {
-            ip_network(target.net_block) for target in self.targets
+            ip_network(target.net_block) for target in scan.targets
         }
         subscan_targets = intersect_network_sets(
             scan_targets, scannable_subnets)
@@ -213,10 +207,11 @@ class DeltaScan(Scan):
         scanner_a = session.query(Scanner).get(scanner_names[0])
         scanner_b = session.query(Scanner).get(scanner_names[1])
 
-        self.subscans = [
-            Subscan.create(self, scanner_a, subscan_targets),
-            Subscan.create(self, scanner_b, subscan_targets),
+        scan.subscans = [
+            Subscan.create(scan, scanner_a, subscan_targets),
+            Subscan.create(scan, scanner_b, subscan_targets),
         ]
+        return scan
 
 
 class ScanTarget(Persistable):
