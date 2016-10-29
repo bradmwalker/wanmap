@@ -152,9 +152,7 @@ class SplittingScan(Scan):
             raise ValueError('Must specify at least one scanning target.')
         created_at = arrow.now().datetime
         scan = cls(created_at=created_at, user=user, parameters=parameters)
-        scan.targets = [
-            ScanTarget.from_field(scan, target) for target in targets
-        ]
+        scan.targets.extend(ScanTarget.from_fields(targets))
         scanners = session.query(Scanner).options(joinedload('subnets'))
         scan_targets = {
             ip_network(target.net_block) for target in scan.targets
@@ -191,9 +189,7 @@ class DeltaScan(Scan):
             raise ValueError('Must specify at least one scanning target.')
         created_at = arrow.now().datetime
         scan = cls(created_at=created_at, user=user, parameters=parameters)
-        scan.targets = [
-            ScanTarget.from_field(scan, target) for target in targets
-        ]
+        scan.targets.extend(ScanTarget.from_fields(targets))
         scannable_subnets = {
             ip_network(subnet) for subnet,
             in session.query(ScannerSubnet.subnet)
@@ -226,12 +222,16 @@ class ScanTarget(Persistable):
     # Maps to multiple targets of one nmap instance
 
     @classmethod
-    def from_field(cls, scan, target):
+    def from_fields(cls, targets):
+        return map(cls.from_field, targets)
+
+    @classmethod
+    def from_field(cls, target):
         hostname, net_block = target, to_ip_network(target)
         if hostname != net_block:
-            return cls(scan=scan, net_block=net_block, hostname=hostname)
+            return cls(net_block=net_block, hostname=hostname)
         else:
-            return cls(scan=scan, net_block=net_block)
+            return cls(net_block=net_block)
 
 
 class Subscan(Persistable):
