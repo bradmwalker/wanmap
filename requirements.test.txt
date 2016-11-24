@@ -2,11 +2,11 @@
 beautifulsoup4==4.5.1
 coverage==4.2
 py==1.4.31
-pytest==3.0.3
+pytest==3.0.4
 pytest-cov==2.4.0
-pytest-html==1.10.1
-pytest-selenium==1.5.0
+pytest-html==1.11.0
+pytest-selenium==1.6.0
 pytest-variables==1.4
-requests==2.11.1
+requests==2.12.1
 selenium<3.0.0
 WebTest==2.0.23
