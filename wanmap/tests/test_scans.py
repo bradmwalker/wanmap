@@ -43,7 +43,7 @@ def persisted_scan(dbsession):
 
 def test_splitting_scan_form_requires_nmap_options(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
-        appstruct = {'nmap_options': '', 'scan_targets': ('10.1.0.0/24',)}
+        appstruct = {'nmap_options': '', 'scan_targets': ['10.1.0.0/24']}
         splitting_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
 
@@ -57,25 +57,25 @@ def test_splitting_scan_form_requires_a_scan_target(splitting_scan_form):
 
 def test_splitting_scan_form_targets_not_empty(splitting_scan_form):
     with pytest.raises(ValidationFailure) as exc:
-        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('',)}
+        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['']}
         splitting_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
 
 
 def test_splitting_scan_form_allows_ipv4_address(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.1.0.1',)}
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['10.1.0.1']}
     splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_splitting_scan_form_allows_ipv4_network(splitting_scan_form):
-    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('10.1.0.0/24',)}
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['10.1.0.0/24']}
     splitting_scan_form.validate_pstruct(appstruct)
 
 
 def test_splitting_scan_form_allows_ipv6_address(splitting_scan_form):
     appstruct = {
         'nmap_options': PING_SWEEP,
-        'scan_targets': ('fd12:3456:789a:1::1',)
+        'scan_targets': ['fd12:3456:789a:1::1']
     }
     splitting_scan_form.validate_pstruct(appstruct)
 
@@ -83,7 +83,7 @@ def test_splitting_scan_form_allows_ipv6_address(splitting_scan_form):
 def test_splitting_scan_form_allows_ipv6_network(splitting_scan_form):
     appstruct = {
         'nmap_options': PING_SWEEP,
-        'scan_targets': ('fd12:3456:789a:1::/64',)
+        'scan_targets': ['fd12:3456:789a:1::/64']
     }
     splitting_scan_form.validate_pstruct(appstruct)
 
@@ -92,7 +92,7 @@ def test_splitting_scan_form_allows_resolvable_hostname(
     splitting_scan_form, fake_dns):
     appstruct = {
         'nmap_options': PING_SWEEP,
-        'scan_targets': ('wanmap.local',)
+        'scan_targets': ['wanmap.local']
     }
     splitting_scan_form.validate_pstruct(appstruct)
 
@@ -100,7 +100,7 @@ def test_splitting_scan_form_allows_resolvable_hostname(
 def test_splitting_scan_form_does_not_allow_unresolvable(
     splitting_scan_form, fake_dns):
     with pytest.raises(ValidationFailure) as exc:
-        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ('*',)}
+        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['*']}
         splitting_scan_form.validate_pstruct(appstruct)
     assert 'Unable to resolve hostname' in exc.value.render()
 
@@ -153,7 +153,7 @@ def test_delta_scan_form_requires_scanner_a_choice(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': '', 'scanner_b': 'scanner-b'},
-            'scan_targets': ('10.0.0.1',)
+            'scan_targets': ['10.0.0.1']
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
@@ -164,7 +164,7 @@ def test_delta_scan_form_requires_scanner_b_choice(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': 'scanner-a', 'scanner_b': ''},
-            'scan_targets': ('10.0.0.1',)
+            'scan_targets': ['10.0.0.1']
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
@@ -175,7 +175,7 @@ def test_delta_scan_form_requires_distinct_scanner_choices(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': 'scanner-a', 'scanner_b': 'scanner-a'},
-            'scan_targets': ('10.0.0.1',)
+            'scan_targets': ['10.0.0.1']
         }
         delta_scan_form.validate_pstruct(appstruct)
     form_html = exc.value.render()
@@ -188,7 +188,7 @@ def test_delta_scan_form_simultaneous_scanner_validation(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': 'scanner-a', 'scanner_b': 'scanner-a'},
-            'scan_targets': ('',)
+            'scan_targets': ['']
         }
         delta_scan_form.validate_pstruct(appstruct)
     form_html = exc.value.render()
