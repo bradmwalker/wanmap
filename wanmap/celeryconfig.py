@@ -18,7 +18,7 @@ class ScanRouter:
         if task == 'wanmap.tasks.exec_nmap_scan':
             scanner_name = args[0]
             return {
-                'exchange': 'C.dq',
+                'exchange': 'C.dq2',
                 'routing_key': 'scanner@{}'.format(scanner_name)
             }
         return None
