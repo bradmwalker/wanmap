@@ -17,9 +17,16 @@ from .util import to_ip_network
 SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
 DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
 SCAN_LISTING_PAGE_LENGTH = 20
-NO_MAPPED_SUBNETS_ALERT_MESSAGE = 'There are no subnets mapped. The Splitting Scan distributes scan jobs to scanners according to assigned subnets. Start scanners and/or assign subnets to the scanners.'
-NO_SCANNERS_ALERT_MESSAGE = 'There are no available scanners. Start two or more scanners to enable Delta Scan.'
-ONLY_ONE_SCANNER_ALERT_MESSAGE = 'There is only one available scanner. Start two or more scanners to enable Delta Scan.'
+NO_MAPPED_SUBNETS_ALERT_MESSAGE = (
+    'There are no subnets mapped. The Splitting Scan distributes scan jobs to '
+    'scanners according to assigned subnets. Start scanners and/or assign '
+    'subnets to the scanners.')
+NO_SCANNERS_ALERT_MESSAGE = (
+    'There are no available scanners. Start two or more scanners to enable '
+    'Delta Scan.')
+ONLY_ONE_SCANNER_ALERT_MESSAGE = (
+    'There is only one available scanner. Start two or more scanners to '
+    'enable Delta Scan.')
 
 logger = logging.getLogger(__name__)
 
