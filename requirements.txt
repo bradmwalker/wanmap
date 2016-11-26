@@ -24,6 +24,7 @@ pyramid-jinja2==2.7
 pyramid-tm==2.0
 pyramid-transactional-celery==0.1.1
 python-dateutil==2.6.0
+python-libnmap==0.7.0
 pytz==2017.2
 repoze.lru==0.6
 six==1.10.0
