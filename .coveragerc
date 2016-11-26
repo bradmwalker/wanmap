@@ -1,12 +1,16 @@
 # .coveragerc to control coverage.py
 [run]
 branch = True
-omit = wanmap/tests/*
+omit =
+    wanmap/*_test.py
+    wanmap/scripts/*
 source = wanmap
 
 
 [report]
-omit = wanmap/tests/*
+omit =
+    wanmap/*_test.py
+    wanmap/scripts/*
 # Regexes for lines to exclude from consideration
 exclude_lines =
     # Have to re-enable the standard pragma
