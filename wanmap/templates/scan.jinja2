@@ -1,12 +1,11 @@
 {% if not standalone %}{% extends "layout.jinja2" %}{% endif %}
 {% block content %}
-<div id="scan" class="row">
-  <h4>Status: <span id="scan-status">{{ scan.status.name|capitalize }}</span> Parameters: {{ scan.parameters }}</h4>
-  {% for subscan in scan.subscans %}
-    <h5>{{ subscan.scanner_name }}</h5>
-    <p>{% for target in subscan.targets %}{{ target.target }} {% endfor %}</p>
-    <pre id="{{ subscan.scanner_name }}-results">{% if subscan.xml_results %}{{ subscan.xml_results }}{% endif %}</pre>
-  {% endfor %}
+<div class="row">
+  {% if scan.type == 'splitting' %}
+    {% include 'splitting-scan.jinja2' %}
+  {% elif scan.type == 'delta' %}
+    {% include 'delta-scan.jinja2' %}
+  {% endif %}
 </div>
 {% if not standalone %}
 <script type="text/javascript" charset="utf-8">
