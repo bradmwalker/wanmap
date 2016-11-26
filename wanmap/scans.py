@@ -167,6 +167,11 @@ class DeltaScan(Scan):
         ]
         return scan
 
+    @property
+    def delta(self):
+        subscan_a, subscan_b = self.subscans
+        return subscan_a.parsed.diff(subscan_b.parsed)
+
 
 class SplittingScan(Scan):
     __tablename__ = 'splitting_scans'
@@ -214,6 +219,14 @@ class SplittingScan(Scan):
             if matched_targets
         ]
         return scan
+
+    @property
+    def aggregate(self):
+        subscans = (subscan.parsed for subscan in self.subscans)
+        hosts = tuple(
+            host for subscan in subscans
+            for host in subscan.hosts)
+        return hosts
 
 
 class ScanTarget(Persistable):
@@ -273,6 +286,11 @@ class Subscan(Persistable):
     def complete(self, xml_results, duration):
         self.xml_results = xml_results
         self.started_at, self.finished_at = duration
+
+    @property
+    def parsed(self):
+        from libnmap.parser import NmapParser
+        return NmapParser.parse(self.xml_results)
 
 
 class SubscanTarget(Persistable):

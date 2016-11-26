@@ -1,7 +1,21 @@
 <h2>Splitting Scan</h2>
 <h4>Parameters: {{ scan.parameters }}</h4>
-{% for subscan in scan.subscans %}
-<h5>{{ subscan.scanner_name }}</h5>
-<p>{% for target in subscan.targets %}{{ target.target }} {% endfor %}</p>
-<pre id="{{ subscan.scanner_name }}-results">{% if subscan.xml_results %}{{ subscan.xml_results }}{% endif %}</pre>
-{% endfor %}
+<table class="table">
+  <tbody>
+  {% for host in scan.aggregate %}
+  <tr>
+    {% if host.services %}
+      {% for service in host.services %}
+    <td>{{ host.id }}</td>
+    <td>{{ service.protocol }} {{ service.port }} {{ service.status }}</td>
+    <td>{{ service.scripts_results }}</td>
+      {% endfor %}
+    {% else %}
+    <td>{{ host.id }}</td>
+    <td>-</td>
+    <td>-</td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
