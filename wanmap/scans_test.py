@@ -5,6 +5,12 @@ from deform import ValidationFailure
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
+from .scans import (
+    DeltaScanSchema, SplittingScanSchema, show_scan, show_scans,
+    NO_MAPPED_SUBNETS_ALERT_MESSAGE, NO_SCANNERS_ALERT_MESSAGE,
+    ONLY_ONE_SCANNER_ALERT_MESSAGE,
+)
+from .schema import RemoteUser, SplittingScan
 
 PING_SWEEP = '-sn -PE -n'
 _logger = logging.getLogger(__name__)
@@ -12,14 +18,12 @@ _logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def splitting_scan_form():
-    from ..scans import SplittingScanSchema
     subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
     return SplittingScanSchema.form(subnets)
 
 
 @pytest.fixture
 def delta_scan_form():
-    from ..scans import DeltaScanSchema
     scanner_names = {'scanner-a', 'scanner-b'}
     subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
     return DeltaScanSchema.form(scanner_names, subnets)
@@ -27,7 +31,6 @@ def delta_scan_form():
 
 @pytest.fixture
 def persisted_scan(dbsession):
-    from ..schema import RemoteUser, SplittingScan
     user = RemoteUser(name='test', role='user')
     datetime = arrow.now().datetime
     scan = SplittingScan(created_at=datetime, user=user, parameters=PING_SWEEP)
@@ -113,7 +116,6 @@ def test_new_splitting_scan_without_subnets_has_no_form(
 @pytest.mark.parametrize('method', ('GET', 'POST'))
 def test_new_splitting_scan_without_subnets_alerts(
     monkeypatch, fresh_app, method):
-    from wanmap.scans import NO_MAPPED_SUBNETS_ALERT_MESSAGE
     monkeypatch.setattr(
         'wanmap.scans.get_scanner_subnets',
         lambda _: set())
@@ -204,7 +206,6 @@ def test_new_delta_scan_without_scanners_has_no_form(
 @pytest.mark.parametrize('method', ('GET', 'POST'))
 def test_new_delta_scan_without_scanners_alerts(
     monkeypatch, fresh_app, method):
-    from wanmap.scans import NO_SCANNERS_ALERT_MESSAGE
     monkeypatch.setattr(
         'wanmap.scans.get_scanner_names',
         lambda _: set())
@@ -226,7 +227,6 @@ def test_new_delta_scan_with_one_scanner_has_no_form(
 @pytest.mark.parametrize('method', ('GET', 'POST'))
 def test_new_delta_scan_with_one_scanner_alerts(
     monkeypatch, fresh_app, method):
-    from wanmap.scans import ONLY_ONE_SCANNER_ALERT_MESSAGE
     monkeypatch.setattr(
         'wanmap.scans.get_scanner_names',
         lambda _: {'dc'})
@@ -246,14 +246,12 @@ def test_new_delta_scan_with_two_scanners_has_form(
 
 
 def test_show_scan_non_timestamp_fails(view_request):
-    from ..scans import show_scan
     view_request.matchdict['time'] = 'space'
     with pytest.raises(HTTPNotFound):
         show_scan(view_request)
 
 
 def test_show_scan_nonexistent_timestamp_fails(view_request):
-    from ..scans import show_scan
     time = arrow.now().datetime
     view_request.matchdict['time'] = time
     with pytest.raises(HTTPNotFound):
@@ -261,7 +259,6 @@ def test_show_scan_nonexistent_timestamp_fails(view_request):
 
 
 def test_show_scan_with_valid_timestamp(view_request, persisted_scan):
-    from ..scans import show_scan
     time = persisted_scan.created_at
     view_request.matchdict['time'] = time
     response = show_scan(view_request)
@@ -269,19 +266,17 @@ def test_show_scan_with_valid_timestamp(view_request, persisted_scan):
 
 
 def test_list_scans_empty(view_request):
-    from ..scans import show_scans
     result = show_scans(view_request)
     assert result['scans'] == ()
 
 
 def test_list_scans_exist(view_request, persisted_scan):
-    from ..scans import show_scans
     result = show_scans(view_request)
     assert result['scans'] == (persisted_scan,)
 
 
 @pytest.mark.xfail(reason='Pagination not yet implemented.')
 def test_list_scans_pagination(view_request):
-    from ..scans import show_scans, SCAN_LISTING_PAGE_LENGTH
+    from .scans import SCAN_LISTING_PAGE_LENGTH
     result = show_scans(view_request)
     assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH

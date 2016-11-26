@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from wanmap.schema import DeltaScan, SplittingScan
+from .schema import DeltaScan, Scanner, ScannerSubnet, SplittingScan, User
 
 PING_SWEEP = '-sn -PE -n'
 
@@ -11,7 +11,6 @@ _logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def scan_user():
-    from ..schema import User
     user = User(name='test')
     _logger.info('User: {!r}'.format(user))
     return user
@@ -19,7 +18,6 @@ def scan_user():
 
 @pytest.fixture
 def scanners():
-    from ..schema import Scanner, ScannerSubnet
     scanner_a = Scanner.create(
         name='scanner-a', interface_address='10.0.0.2/24')
     scanner_a.subnets.append(
@@ -59,7 +57,8 @@ def test_create_splitting_scan_errors_on_no_targets(dbsession, scan_user):
             targets=())
 
 
-def test_create_splitting_scan_errors_on_no_subnet_matches(dbsession, scan_user):
+def test_create_splitting_scan_errors_on_no_subnet_matches(
+    dbsession, scan_user):
     with pytest.raises(Exception):
         SplittingScan.create(
             session=dbsession, user=scan_user, parameters=PING_SWEEP,
@@ -91,7 +90,8 @@ def test_create_delta_scan(dbsession, scan_user, persisted_scanners):
     assert subscan_targets == {'10.0.1.1/32'}
 
 
-def test_create_delta_scan_errors_on_no_targets(dbsession, scan_user, persisted_scanners):
+def test_create_delta_scan_errors_on_no_targets(
+    dbsession, scan_user, persisted_scanners):
     scanner_names = tuple(scanner.name for scanner in persisted_scanners)
     with pytest.raises(ValueError):
         DeltaScan.create(

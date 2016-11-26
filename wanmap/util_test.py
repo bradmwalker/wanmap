@@ -1,6 +1,6 @@
 from ipaddress import ip_network
 
-from wanmap.util import intersect_networks, is_ip_network, to_ip_network
+from .util import intersect_networks, is_ip_network, to_ip_network
 
 
 def test_ipv4_address_is_ip_network():
