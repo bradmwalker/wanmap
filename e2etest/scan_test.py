@@ -42,10 +42,10 @@ def test_splitting_scan_live(base_url, selenium):
 
     time.sleep(5)
     selenium.refresh()
-    scan_results = selenium.find_element_by_id('scanner1-results')
-    assert 'Host: 10.1.0.1 () Status: Up' in scan_results.text
-    scan_results = selenium.find_element_by_id('scanner2-results')
-    assert 'Host: 10.2.0.1 () Status: Up' in scan_results.text
+    scan_results = selenium.find_element_by_id('scanner1-results').text
+    assert '<address addr="10.1.0.1" addrtype="ipv4"/>' in scan_results
+    scan_results = selenium.find_element_by_id('scanner2-results').text
+    assert '<address addr="10.2.0.1" addrtype="ipv4"/>' in scan_results
 
 
 @pytest.mark.selenium
@@ -69,7 +69,7 @@ def test_delta_scan_live(base_url, selenium):
 
     time.sleep(5)
     selenium.refresh()
-    scan_results = selenium.find_element_by_id('external-results')
-    assert 'Host: 203.0.113.1 () Status: Up' not in scan_results.text
-    scan_results = selenium.find_element_by_id('dmzscanner-results')
-    assert 'Host: 203.0.113.1 () Status: Up' in scan_results.text
+    scan_results = selenium.find_element_by_id('external-results').text
+    assert '<address addr="203.0.113.1" addrtype="ipv4"/>' not in scan_results
+    scan_results = selenium.find_element_by_id('dmzscanner-results').text
+    assert '<address addr="203.0.113.1" addrtype="ipv4"/>' in scan_results

@@ -20,7 +20,7 @@ dbsession_factory = None
 
 SUDO = '/usr/bin/sudo'
 NMAP = '/usr/bin/nmap'
-NMAP_OUTPUT_OPTIONS = '-oG -'.split()
+NMAP_OUTPUT_OPTIONS = '-oX -'.split()
 
 _logger = get_task_logger(__name__)
 
