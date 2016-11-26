@@ -4,20 +4,17 @@ import socket
 
 import arrow
 import colander
-from deform import Form, ValidationFailure, widget
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound
+from deform import widget
+from pyramid.httpexceptions import HTTPNotFound
 from pyramid.view import view_config
-import transaction
 
 from .schema import (
-    DeltaScan, User, Scan, Scanner, ScannerSubnet, SplittingScan
+    Scan, Scanner, ScannerSubnet,
 )
-from .tasks import scan_workflow
 from .util import to_ip_network
 
 
-SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
-DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
+PING_SWEEP = '-sn -PE -n'
 SCAN_LISTING_PAGE_LENGTH = 20
 NO_MAPPED_SUBNETS_ALERT_MESSAGE = (
     'There are no subnets mapped. The Splitting Scan distributes scan jobs to '
@@ -58,53 +55,6 @@ class ScanTargets(colander.SequenceSchema):
     scan_target = ScanTargetNode()
     validator = colander.Length(
         min=1, min_err='Must submit at least one Scan Target')
-
-
-class SplittingScanSchema(colander.Schema):
-    nmap_options = colander.SchemaNode(colander.String())
-    scan_targets = ScanTargets()
-
-    @classmethod
-    def form(cls, subnets):
-        schema = cls().bind(subnets=subnets)
-        return Form(schema, formid='splitting-scan', buttons=('submit',))
-
-
-@view_config(
-    route_name='new_splitting_scan', request_method='GET',
-    renderer='templates/new-scan.jinja2')
-def get_new_splitting_scan(request):
-    subnets = get_scanner_subnets(request.dbsession)
-    if not subnets:
-        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
-    scan_form = SplittingScanSchema.form(subnets=subnets)
-    scan_form = scan_form.render({'scan_targets': ('',)})
-    return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
-
-
-@view_config(
-    route_name='new_splitting_scan', request_method='POST',
-    renderer='templates/new-scan.jinja2')
-def post_new_splitting_scan(request):
-    subnets = get_scanner_subnets(request.dbsession)
-    if not subnets:
-        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
-    scan_form = SplittingScanSchema.form(subnets=subnets)
-    controls = request.POST.items()
-    try:
-        appstruct = scan_form.validate(controls)
-    except ValidationFailure as e:
-        return {
-            'form_title': SPLITTING_SCAN_FORM_TITLE,
-            'scan_form': e.render()
-        }
-    with transaction.manager:
-        scan_id = schedule_splitting_scan(
-            request.dbsession,
-            appstruct['nmap_options'],
-            *appstruct['scan_targets'])
-    scan_redirect = request.route_url('show_scan', time=scan_id.isoformat())
-    return HTTPFound(location=scan_redirect)
 
 
 def get_scanner_names(dbsession):
@@ -154,62 +104,6 @@ class ScannerPair(colander.Schema):
             raise exc
 
 
-class DeltaScanSchema(colander.Schema):
-    nmap_options = colander.SchemaNode(colander.String())
-    scanners = ScannerPair()
-    scan_targets = ScanTargets()
-
-    @classmethod
-    def form(cls, scanner_names, subnets):
-        schema = cls().bind(scanner_names=scanner_names, subnets=subnets)
-        return Form(schema, formid='delta-scan', buttons=('submit',))
-
-
-@view_config(
-    route_name='new_delta_scan', request_method='GET',
-    renderer='templates/new-scan.jinja2')
-def get_new_delta_scan(request):
-    scanner_names = get_scanner_names(request.dbsession)
-    if not scanner_names:
-        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
-    elif len(scanner_names) == 1:
-        return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    subnets = get_scanner_subnets(request.dbsession)
-    scan_form = DeltaScanSchema.form(scanner_names, subnets)
-    scan_form = scan_form.render({'scan_targets': ('',)})
-    return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
-
-
-@view_config(
-    route_name='new_delta_scan', request_method='POST',
-    renderer='templates/new-scan.jinja2')
-def post_new_delta_scan(request):
-    scanner_names = get_scanner_names(request.dbsession)
-    if not scanner_names:
-        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
-    elif len(scanner_names) == 1:
-        return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    subnets = get_scanner_subnets(request.dbsession)
-    scan_form = DeltaScanSchema.form(scanner_names, subnets)
-    controls = request.POST.items()
-    try:
-        appstruct = scan_form.validate(controls)
-    except ValidationFailure as e:
-        return {
-            'form_title': DELTA_SCAN_FORM_TITLE,
-            'scan_form': e.render()
-        }
-    with transaction.manager:
-        scan_id = schedule_delta_scan(
-            request.dbsession,
-            appstruct['nmap_options'],
-            (appstruct['scanners']['scanner_a'],
-             appstruct['scanners']['scanner_b']),
-            *appstruct['scan_targets'])
-    scan_redirect = request.route_url('show_scan', time=scan_id.isoformat())
-    return HTTPFound(location=scan_redirect)
-
-
 @view_config(route_name='show_scan', renderer='templates/scan.jinja2')
 def show_scan(request):
     try:
@@ -229,34 +123,3 @@ def show_scans(request):
         order_by(Scan.created_at.desc())
         [:SCAN_LISTING_PAGE_LENGTH])
     return {'scans': scans}
-
-
-def schedule_splitting_scan(dbsession, nmap_options, *targets):
-    # TODO: Add user from session
-    # TODO: Add guest access
-    user = dbsession.query(User).get('admin')
-    scan = SplittingScan.create(
-        dbsession, user=user, parameters=nmap_options, targets=targets)
-    # Look into using zope transaction manager for celery tasks that depend on
-    # database records. Then mock out transactions.
-    dbsession.add(scan)
-    dbsession.flush()
-    scan_time = scan.created_at
-    scan_workflow.apply_async((scan_time,), countdown=1)
-    return scan_time
-
-
-def schedule_delta_scan(dbsession, nmap_options, scanner_names, *targets):
-    # TODO: Add user from session
-    # TODO: Add guest access
-    user = dbsession.query(User).get('admin')
-    scan = DeltaScan.create(
-        dbsession, user=user, parameters=nmap_options,
-        scanner_names=scanner_names, targets=targets)
-    # Look into using zope transaction manager for celery tasks that depend on
-    # database records. Then mock out transactions.
-    dbsession.add(scan)
-    dbsession.flush()
-    scan_time = scan.created_at
-    scan_workflow.apply_async((scan_time,), countdown=1)
-    return scan_time
