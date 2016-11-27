@@ -1,4 +1,11 @@
 *.egg-info
+.bash_history
 .cache
 .coverage
+.idea
+.ipython
+.lesshst
+.psql_history
 coverage
+pip-cache
+venv
