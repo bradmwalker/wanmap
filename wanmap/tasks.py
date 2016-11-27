@@ -52,27 +52,37 @@ def scan_workflow(scan_id):
 
         exec_nmap_scan.apply_async(
             (scan_id, scanner_name, nmap_options, subscan_targets),
-            link=record_subscan.s(scan_id, scanner_name))
+            link=record_subscan_results.s(scan_id, scanner_name))
 
 
 @Background.task
 def exec_nmap_scan(scan_id, scanner_name, nmap_options, targets):
+    mark_subscan_started.delay(scan_id, scanner_name)
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
     return check_output(nmap_command, universal_newlines=True)
 
 
-# Need a transaction for each subscan. Scans can be written incrementally.
 @Background.task(ignore_results=True)
-def record_subscan(subscan_result, scan_id, scanner_name):
+def mark_subscan_started(scan_id, scanner_name):
     import transaction
     from .schema import get_tm_session
     with transaction.manager:
         dbsession = get_tm_session(dbsession_factory, transaction.manager)
         subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
-        subscan.xml_results = subscan_result
-        dbsession.add(subscan)
+        subscan.mark_started()
+
+
+# Need a transaction for each subscan. Scans can be written incrementally.
+@Background.task(ignore_results=True)
+def record_subscan_results(subscan_result, scan_id, scanner_name):
+    import transaction
+    from .schema import get_tm_session
+    with transaction.manager:
+        dbsession = get_tm_session(dbsession_factory, transaction.manager)
+        subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
+        subscan.mark_finished(subscan_result)
 
 
 def get_scanner_interfaces():

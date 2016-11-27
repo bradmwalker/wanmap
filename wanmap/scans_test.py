@@ -9,6 +9,14 @@ from .scans import (
 )
 from .schema import SplittingScan
 
+FAKE_SCAN_RESULT_XML = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<!DOCTYPE nmaprun>'
+    '<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>'   # noqa
+    '<nmaprun/>'
+)
+
+
 _logger = logging.getLogger(__name__)
 
 
@@ -54,3 +62,30 @@ def test_list_scans_pagination(view_request):
     from .scans import SCAN_LISTING_PAGE_LENGTH
     result = show_scans(view_request)
     assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH
+
+
+@pytest.fixture
+def subscan(persisted_scan):
+    return persisted_scan.subscans[0]
+
+
+def test_subscan_time_information_initially_null(subscan):
+    assert subscan.started_at is None
+    assert subscan.finished_at is None
+
+
+def test_subscan_mark_started_sets_timestamp(subscan):
+    subscan.mark_started()
+    assert subscan.started_at is not None
+
+
+def test_subscan_mark_finished_sets_timestamp(subscan):
+    subscan.mark_started()
+    subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+    assert subscan.finished_at is not None
+
+
+def test_subscan_mark_finished_sets_xml_result(subscan):
+    subscan.mark_started()
+    subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+    assert len(subscan.xml_results)

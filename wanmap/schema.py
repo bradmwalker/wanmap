@@ -216,6 +216,8 @@ class Subscan(Persistable):
         primary_key=True)
     scanner_name = Column(
         String(64), ForeignKey('scanners.name'), primary_key=True)
+    started_at = Column(DateTime(timezone=True))
+    finished_at = Column(DateTime(timezone=True))
     xml_results = Column(String)
 
     targets = relationship('SubscanTarget', backref='subscan')
@@ -228,6 +230,15 @@ class Subscan(Persistable):
             SubscanTarget(target=target) for target in targets
         ]
         return subscan
+
+    def mark_started(self):
+        self.started_at = arrow.now().datetime
+
+    def mark_finished(self, xml_results):
+        assert self.started_at, \
+            "Subscan must have been marked started before it can finish."
+        self.finished_at = arrow.now().datetime
+        self.xml_results = xml_results
 
 
 class SubscanTarget(Persistable):
