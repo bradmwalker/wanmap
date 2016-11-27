@@ -51,12 +51,12 @@ def scan_workflow(scan_id):
         scanner_name = subscan.scanner.name
 
         exec_nmap_scan.apply_async(
-            (scanner_name, nmap_options, subscan_targets),
+            (scan_id, scanner_name, nmap_options, subscan_targets),
             link=record_subscan.s(scan_id, scanner_name))
 
 
 @Background.task
-def exec_nmap_scan(scanner_name, nmap_options, targets):
+def exec_nmap_scan(scan_id, scanner_name, nmap_options, targets):
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
