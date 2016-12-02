@@ -2,14 +2,10 @@
 {% block content %}
 <div class="row">
   <h4>Parameters: {{ scan.parameters }}</h4>
-  {% if scan %}
   {% for subscan in scan.subscans %}
     <h5>{{ subscan.scanner_name }}</h5>
     <p>{% for target in subscan.targets %}{{ target.target }} {% endfor %}</p>
     <pre id="{{ subscan.scanner_name }}-results">{% if subscan.xml_results %}{{ subscan.xml_results }}{% endif %}</pre>
   {% endfor %}
-  {% else %}
-  <p>No scans found.</p>
-  {% endif %}
 </div>
 {% endblock content %}
