@@ -41,7 +41,6 @@ def test_splitting_scan_live(base_url, selenium):
     scan_targets[1].send_keys(Keys.ENTER)
 
     time.sleep(5)
-    selenium.refresh()
     scan_results = selenium.find_element_by_id('scanner1-results').text
     assert '<address addr="10.1.0.1" addrtype="ipv4"/>' in scan_results
     scan_results = selenium.find_element_by_id('scanner2-results').text
@@ -68,7 +67,6 @@ def test_delta_scan_live(base_url, selenium):
     scan_target.submit()
 
     time.sleep(5)
-    selenium.refresh()
     scan_results = selenium.find_element_by_id('external-results').text
     assert '<address addr="203.0.113.1" addrtype="ipv4"/>' not in scan_results
     scan_results = selenium.find_element_by_id('dmzscanner-results').text
