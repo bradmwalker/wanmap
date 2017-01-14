@@ -14,32 +14,29 @@ cleanmb:
 	rabbitmqctl reset
 	rabbitmqctl start_app
 
+container_run=lxc-attach -n wanmap-dev --
+container_run_with_host_net=lxc-attach -n wanmap-dev -s 'MOUNT|PID|UTSNAME|IPC' --
 container_root=/var/lib/lxc/wanmap-dev/rootfs
 dev-image:
-	lxc-create -t fedora -n wanmap-dev -f lxc.config -B best -- -c -R 24
-	dnf -y --releasever=24 --nogpg \
-		--installroot=$(container_root) \
-		--downloadonly groupinstall \
-		'Minimal Install'
-	dnf -y --releasever=24 --nogpg \
-		--installroot=$(container_root) \
-		--downloadonly install \
+	lxc-create -t fedora -n wanmap-dev -f lxc.config -B best -- -R 24
+	lxc-start -n wanmap-dev
+	sleep 3
+	$(container_run) adduser --system wanmap -d /opt/wanmap
+	$(container_run_with_host_net) dnf -y groupinstall 'Minimal Install'
+	# WANmap dependencies
+	$(container_run_with_host_net) dnf -y install \
 		postgresql-server rabbitmq-server redis \
 		gcc redhat-rpm-config postgresql-devel python3-devel \
 		nmap
 	# Mininet dependencies
-	dnf -y --releasever=24 --nogpg \
-		--installroot=$(container_root) \
-		--downloadonly install \
+	$(container_run_with_host_net) dnf -y install \
 		gcc make socat psmisc xterm openssh-clients iperf net-tools \
 		iproute telnet python-setuptools libcgroup-tools \
 		ethtool help2man pyflakes pylint python-pep8 python-pexpect \
 		git pkgconfig autoconf automake libtool glibc-devel \
 		openvswitch python-ipaddress which
 	# Useful
-	dnf -y --releasever=24 --nogpg \
-		--installroot=$(container_root) \
-		--downloadonly install \
+	$(container_run_with_host_net) dnf -y install \
 		tcpdump lsof strace bind-utils
 
 	# Unpackaged Mininet dependencies
@@ -55,33 +52,15 @@ dev-image:
 	chmod 775 /var/tmp/wanmap
 
 	dnf install -y nginx
-	nginx -c $(shell readlink -f nginx.dev.conf)
+	-nginx -c $(shell realpath nginx.dev.conf)
 	modprobe openvswitch
 
-	lxc-start -n wanmap-dev
-	lxc-attach -n wanmap-dev -- dnf install -y make
-	lxc-attach -n wanmap-dev -- make develop -C /opt/wanmap
+	$(container_run) dnf install -y make
+	$(container_run) make develop -C /opt/wanmap
 
 dev-image-install:
 	# Override unreachable DNS resolvers copied by the Fedora template
 	cp /dev/null /etc/resolv.conf
-	dnf -y groupinstall 'Minimal Install'
-	# WANmap dependencies
-	dnf -y install \
-		postgresql-server rabbitmq-server redis \
-		gcc redhat-rpm-config postgresql-devel python3-devel \
-		nmap
-	# Mininet dependencies
-	dnf -y install \
-		gcc make socat psmisc xterm openssh-clients iperf net-tools \
-		iproute telnet python-setuptools libcgroup-tools \
-		ethtool help2man pyflakes pylint python-pep8 python-pexpect \
-		git pkgconfig autoconf automake libtool glibc-devel \
-		openvswitch git python-ipaddress which
-	dnf -y install \
-		tcpdump lsof strace bind-utils
-	# dnf -y install socat # Doesn't install for some reason
-	adduser --system wanmap -d /opt/wanmap
 	(cd /root/openflow; ./boot.sh; ./configure; make install)
 	(cd /root/mininet; make install)
 	sed -re 's/%% \{loopback_users, \[\]\},/\{loopback_users, \[\]\}/'\
@@ -105,7 +84,6 @@ develop: dev-virtualenv
 	chown -R wanmap:wanmap /opt/wanmap/wanmap.egg-info
 	sudo -u wanmap /opt/wanmap/venv/bin/pip install -e /opt/wanmap
 	sudo -u wanmap createdb wanmap
-	chown -R wanmap:wanmap /var/tmp/wanmap
 	cp config/*.service -t /etc/systemd/system
 	install -m 440 -o root -g root config/wanmap-agent /etc/sudoers.d
 	systemctl daemon-reload
