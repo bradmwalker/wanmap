@@ -1,0 +1,6 @@
+[submodule "vendor/openflow"]
+	path = vendor/openflow
+	url = git://github.com/mininet/openflow.git
+[submodule "vendor/mininet"]
+	path = vendor/mininet
+	url = git://github.com/mininet/mininet.git
