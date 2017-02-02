@@ -7,7 +7,7 @@ import pytest
 from .scans import (
     show_scan, show_scans, PING_SWEEP,
 )
-from .schema import SplittingScan
+from .schema import Scan, SplittingScan
 
 FAKE_SCAN_RESULT_XML = (
     '<?xml version="1.0" encoding="UTF-8"?>'
@@ -62,6 +62,30 @@ def test_list_scans_pagination(view_request):
     from .scans import SCAN_LISTING_PAGE_LENGTH
     result = show_scans(view_request)
     assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH
+
+
+def test_scan_initially_scheduled(persisted_scan):
+    assert persisted_scan.status == Scan.States.SCHEDULED
+
+
+def test_scan_starting_subscan_marks_scan_progressing(persisted_scan):
+    persisted_scan.subscans[0].mark_started()
+    assert persisted_scan.status == Scan.States.PROGRESSING
+
+
+def test_scan_all_subscans_finished_marks_scan_completed(persisted_scan):
+    for subscan in persisted_scan.subscans:
+        subscan.mark_started()
+        subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+    assert persisted_scan.status == Scan.States.COMPLETED
+
+
+def test_scan_not_all_subscans_finished_marks_scan_progressing(persisted_scan):
+    for subscan in persisted_scan.subscans:
+        subscan.mark_started()
+    for subscan in persisted_scan.subscans[:-1]:
+        subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+    assert persisted_scan.status == Scan.States.PROGRESSING
 
 
 @pytest.fixture
