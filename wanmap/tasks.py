@@ -27,7 +27,7 @@ _logger = get_task_logger(__name__)
 
 # TODO: Register Queue for hostname, and only initialize DB if console node
 @worker_process_init.connect
-def _init(signal, sender):
+def _init(signal, sender, **kwargs):
     from .schema import get_engine, get_session_factory
     global engine
     global dbsession_factory
