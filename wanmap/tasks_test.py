@@ -2,18 +2,11 @@ import logging
 
 import pytest
 
-from .schema import DeltaScan, Scanner, ScannerSubnet, SplittingScan, User
+from .schema import DeltaScan, Scanner, ScannerSubnet, SplittingScan
 
 PING_SWEEP = '-sn -PE -n'
 
 _logger = logging.getLogger(__name__)
-
-
-@pytest.fixture
-def scan_user():
-    user = User(name='test')
-    _logger.info('User: {!r}'.format(user))
-    return user
 
 
 @pytest.fixture
@@ -34,9 +27,9 @@ def persisted_scanners(dbsession, scanners):
     return scanners
 
 
-def test_splitting_scan(dbsession, scan_user, persisted_scanners):
+def test_splitting_scan(dbsession, persisted_scanners):
     scan = SplittingScan.create(
-        session=dbsession, user=scan_user, parameters=PING_SWEEP,
+        session=dbsession, parameters=PING_SWEEP,
         targets=('10.0.0.0/8',))
     subscans = scan.subscans
     scanners = {subscan.scanner for subscan in subscans}
@@ -50,24 +43,23 @@ def test_splitting_scan(dbsession, scan_user, persisted_scanners):
     assert subscan_targets == scanner_subnets
 
 
-def test_create_splitting_scan_errors_on_no_targets(dbsession, scan_user):
+def test_create_splitting_scan_errors_on_no_targets(dbsession):
     with pytest.raises(ValueError):
         SplittingScan.create(
-            session=dbsession, user=scan_user, parameters=PING_SWEEP,
+            session=dbsession, parameters=PING_SWEEP,
             targets=())
 
 
-def test_create_splitting_scan_errors_on_no_subnet_matches(
-    dbsession, scan_user):
+def test_create_splitting_scan_errors_on_no_subnet_matches(dbsession):
     with pytest.raises(Exception):
         SplittingScan.create(
-            session=dbsession, user=scan_user, parameters=PING_SWEEP,
+            session=dbsession, parameters=PING_SWEEP,
             targets=('0.0.0.0/0',))
 
 
-def test_create_splitting_host_match(dbsession, scan_user, persisted_scanners):
+def test_create_splitting_host_match(dbsession, persisted_scanners):
     scan = SplittingScan.create(
-        session=dbsession, user=scan_user, parameters=PING_SWEEP,
+        session=dbsession, parameters=PING_SWEEP,
         targets=('10.0.1.1',))
     subscan_targets = {
         target.target
@@ -77,10 +69,10 @@ def test_create_splitting_host_match(dbsession, scan_user, persisted_scanners):
     assert subscan_targets == {'10.0.1.1/32'}
 
 
-def test_create_delta_scan(dbsession, scan_user, persisted_scanners):
+def test_create_delta_scan(dbsession, persisted_scanners):
     scanner_names = tuple(scanner.name for scanner in persisted_scanners)
     scan = DeltaScan.create(
-        session=dbsession, user=scan_user, parameters=PING_SWEEP,
+        session=dbsession, parameters=PING_SWEEP,
         scanner_names=scanner_names, targets=('10.0.1.1',))
     subscan_targets = {
         target.target
@@ -90,10 +82,9 @@ def test_create_delta_scan(dbsession, scan_user, persisted_scanners):
     assert subscan_targets == {'10.0.1.1/32'}
 
 
-def test_create_delta_scan_errors_on_no_targets(
-    dbsession, scan_user, persisted_scanners):
+def test_create_delta_scan_errors_on_no_targets(dbsession, persisted_scanners):
     scanner_names = tuple(scanner.name for scanner in persisted_scanners)
     with pytest.raises(ValueError):
         DeltaScan.create(
-            session=dbsession, user=scan_user, parameters=PING_SWEEP,
+            session=dbsession, parameters=PING_SWEEP,
             scanner_names=scanner_names, targets=())

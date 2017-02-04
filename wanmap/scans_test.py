@@ -7,16 +7,15 @@ import pytest
 from .scans import (
     show_scan, show_scans, PING_SWEEP,
 )
-from .schema import RemoteUser, SplittingScan
+from .schema import SplittingScan
 
 _logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
 def persisted_scan(dbsession):
-    user = RemoteUser(name='test', role='user')
     datetime = arrow.now().datetime
-    scan = SplittingScan(created_at=datetime, user=user, parameters=PING_SWEEP)
+    scan = SplittingScan(created_at=datetime, parameters=PING_SWEEP)
     dbsession.add(scan)
     dbsession.flush()
     return scan

@@ -4,7 +4,7 @@ import logging
 import arrow
 from sqlalchemy import engine_from_config
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, ForeignKeyConstraint, String
+    Column, DateTime, ForeignKey, ForeignKeyConstraint, String
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative import declarative_base
@@ -46,39 +46,6 @@ def includeme(config):
         'dbsession',
         reify=True
     )
-
-
-class User(Persistable):
-    __tablename__ = 'users'
-    name = Column(String(32), primary_key=True)
-    type = Column(String(16), nullable=False)
-
-    scans = relationship('Scan', backref='user')
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'user',
-        'polymorphic_on': 'type'
-    }
-
-
-class LocalUser(User):
-    __tablename__ = 'local_users'
-    name = Column(String(32), ForeignKey('users.name'), primary_key=True)
-    email = Column(String, unique=True, nullable=False)
-    role = Column(String, nullable=False)
-    activated = Column(Boolean, nullable=False, default=True)
-    hash = Column(String(106), nullable=False)
-    password_modified = Column(DateTime(timezone=True), nullable=False)
-
-    __mapper_args__ = {'polymorphic_identity': 'local'}
-
-
-class RemoteUser(User):
-    __tablename__ = 'remote_users'
-    name = Column(String(32), ForeignKey('users.name'), primary_key=True)
-    role = Column(String, nullable=False)
-
-    __mapper_args__ = {'polymorphic_identity': 'remote'}
 
 
 class Scanner(Persistable):
@@ -125,7 +92,6 @@ class Scan(Persistable):
 
     __tablename__ = 'scans'
     created_at = Column(DateTime(timezone=True), primary_key=True)
-    user_name = Column(String, ForeignKey('users.name'), nullable=False)
     parameters = Column(String, nullable=False)
     type = Column(String, nullable=False)
 
@@ -147,11 +113,11 @@ class SplittingScan(Scan):
     __mapper_args__ = {'polymorphic_identity': 'splitting'}
 
     @classmethod
-    def create(cls, session, user, parameters, targets):
+    def create(cls, session, parameters, targets):
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
         created_at = arrow.now().datetime
-        scan = cls(created_at=created_at, user=user, parameters=parameters)
+        scan = cls(created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
         scanners = session.query(Scanner).options(joinedload('subnets'))
         scan_targets = {
@@ -184,11 +150,11 @@ class DeltaScan(Scan):
     __mapper_args__ = {'polymorphic_identity': 'delta'}
 
     @classmethod
-    def create(cls, session, user, parameters, scanner_names, targets):
+    def create(cls, session, parameters, scanner_names, targets):
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
         created_at = arrow.now().datetime
-        scan = cls(created_at=created_at, user=user, parameters=parameters)
+        scan = cls(created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
         scannable_subnets = {
             ip_network(subnet) for subnet,

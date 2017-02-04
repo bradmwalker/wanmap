@@ -5,11 +5,8 @@ from pyramid.paster import get_appsettings, setup_logging
 from pyramid.scripts.common import parse_vars
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import CreateTable
-import transaction
 
-from ..schema import (
-    get_engine, get_session_factory, get_tm_session, Persistable, User
-)
+from ..schema import get_engine, Persistable
 
 
 def usage(argv):
@@ -34,9 +31,4 @@ def main(argv=sys.argv):
     setup_logging(config_uri)
     settings = get_appsettings(config_uri, name='wanmap', options=options)
     engine = get_engine(settings)
-    session_factory = get_session_factory(engine)
     Persistable.metadata.create_all(engine)
-
-    with transaction.manager:
-        dbsession = get_tm_session(session_factory, transaction.manager)
-        dbsession.add(User(name='admin'))

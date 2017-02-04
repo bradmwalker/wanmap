@@ -11,9 +11,7 @@ import transaction
 from .scans import (
     get_scanner_subnets, ScanTargets, NO_MAPPED_SUBNETS_ALERT_MESSAGE
 )
-from .schema import (
-    User, SplittingScan
-)
+from .schema import SplittingScan
 from .tasks import scan_workflow
 # from .util import to_ip_network
 
@@ -70,9 +68,8 @@ def post_new_splitting_scan(request):
 def schedule_splitting_scan(dbsession, nmap_options, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
-    user = dbsession.query(User).get('admin')
     scan = SplittingScan.create(
-        dbsession, user=user, parameters=nmap_options, targets=targets)
+        dbsession, parameters=nmap_options, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.
     dbsession.add(scan)

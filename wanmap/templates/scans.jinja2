@@ -4,7 +4,7 @@
   <h4>Scans</h4>
   <table class="table">
     <thead>
-      <tr><th>Time</th><th>Type</th><th>Owner</th><th>Parameters</th></tr>
+      <tr><th>Time</th><th>Type</th><th>Parameters</th></tr>
     </thead>
     <tbody>
     {% if scans %}
@@ -12,7 +12,6 @@
       <tr>
         <td><a href="{{ request.route_url('show_scan', time=scan.created_at)  }}">{{ scan.created_at }}</a></td>
         <td>{{ scan.type }}</td>
-        <td>{{ scan.user.name }}</td>
         <td>{{ scan.parameters }}</td>
       </tr>
     {% endfor %}

@@ -9,9 +9,7 @@ from .scans import (
     get_scanner_names, get_scanner_subnets,
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
 )
-from .schema import (
-    DeltaScan, User,
-)
+from .schema import DeltaScan
 from .tasks import scan_workflow
 # from .util import to_ip_network
 
@@ -77,9 +75,8 @@ def post_new_delta_scan(request):
 def schedule_delta_scan(dbsession, nmap_options, scanner_names, *targets):
     # TODO: Add user from session
     # TODO: Add guest access
-    user = dbsession.query(User).get('admin')
     scan = DeltaScan.create(
-        dbsession, user=user, parameters=nmap_options,
+        dbsession, parameters=nmap_options,
         scanner_names=scanner_names, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.
