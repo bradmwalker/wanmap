@@ -63,7 +63,10 @@ class User(Persistable):
 
 class LocalUser(User):
     __tablename__ = 'local_users'
-    name = Column(String(32), ForeignKey('users.name'), primary_key=True)
+    name = Column(
+        String(32),
+        ForeignKey('users.name', onupdate='cascade'),
+        primary_key=True)
     email = Column(String, unique=True, nullable=False)
     role = Column(String, nullable=False)
     activated = Column(Boolean, nullable=False, default=True)
@@ -75,7 +78,10 @@ class LocalUser(User):
 
 class RemoteUser(User):
     __tablename__ = 'remote_users'
-    name = Column(String(32), ForeignKey('users.name'), primary_key=True)
+    name = Column(
+        String(32),
+        ForeignKey('users.name', onupdate='cascade'),
+        primary_key=True)
     role = Column(String, nullable=False)
 
     __mapper_args__ = {'polymorphic_identity': 'remote'}
