@@ -17,13 +17,12 @@ cleanmb:
 container_run=lxc-attach -n wanmap-dev --
 container_run_with_host_net=lxc-attach -n wanmap-dev -s 'MOUNT|PID|UTSNAME|IPC' --
 container_root=/var/lib/lxc/wanmap-dev/rootfs
-dev-image:
+dev-base:
 	mkdir -p /var/tmp/wanmap-dev
 	chmod 1777 /var/tmp/wanmap-dev
 	lxc-create -t fedora -n wanmap-dev -f lxc.config -B best -- -R 24
 	lxc-start -n wanmap-dev
 	sleep 3
-	$(container_run) adduser --system wanmap -d /opt/wanmap
 	$(container_run_with_host_net) dnf -y groupinstall 'Minimal Install'
 	# WANmap dependencies
 	$(container_run_with_host_net) dnf -y install \
@@ -41,19 +40,25 @@ dev-image:
 	$(container_run_with_host_net) dnf -y install \
 		tcpdump lsof strace bind-utils
 
-	# Cache pip resources
-	# Downloading psycopg2 requires postgresql-devel?!
-	sudo dnf install -y postgresql-devel
-	pip3 download -d pip-cache -r requirements.dev.txt
-
 	dnf install -y nginx
 	-nginx -c $(shell realpath nginx.dev.conf)
 	modprobe openvswitch
 
+dev-virtualenv: dev-base
+	$(container_run) adduser --system wanmap -d /opt/wanmap
+	$(container_run) mkdir -p /opt/wanmap/venv
+	$(container_run) chown -R wanmap:wanmap /opt/wanmap/venv
+	$(container_run) runuser wanmap -c 'pyvenv-3.5 /opt/wanmap/venv'
+	$(container_run_with_host_net) runuser wanmap -c '/opt/wanmap/venv/bin/pip install -r requirements.dev.txt'
+	$(container_run) mkdir -p /opt/wanmap/wanmap.egg-info
+	$(container_run) chmod 777 /opt/wanmap/wanmap.egg-info
+	$(container_run) runuser wanmap -c '/opt/wanmap/venv/bin/pip install -e /opt/wanmap'
+
+dev-image: dev-virtualenv
 	$(container_run) dnf install -y make
 	$(container_run) make develop -C /opt/wanmap
 
-dev-image-install:
+dev-install:
 	# Override unreachable DNS resolvers copied by the Fedora template
 	cp /dev/null /etc/resolv.conf
 	(cd /opt/wanmap/vendor/openflow; ./boot.sh; ./configure; make install)
@@ -68,16 +73,8 @@ dev-image-install:
 distclean:
 	lxc-destroy -f -n wanmap-dev
 
-dev-virtualenv: dev-image-install
-	mkdir -p /opt/wanmap/venv
-	chown -R wanmap:wanmap /opt/wanmap/venv
-	sudo -u wanmap pyvenv-3.5 /opt/wanmap/venv
 
-develop: dev-virtualenv
-	sudo -u wanmap /opt/wanmap/venv/bin/pip install --no-index --find-links=pip-cache -r requirements.dev.txt
-	mkdir -p /opt/wanmap/wanmap.egg-info
-	chown -R wanmap:wanmap /opt/wanmap/wanmap.egg-info
-	sudo -u wanmap /opt/wanmap/venv/bin/pip install -e /opt/wanmap
+develop: dev-install
 	sudo -u wanmap createdb wanmap
 	cp config/*.service -t /etc/systemd/system
 	install -m 440 -o root -g root config/wanmap-agent /etc/sudoers.d
