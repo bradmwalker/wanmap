@@ -45,24 +45,23 @@ dev-base:
 	modprobe openvswitch
 
 dev-virtualenv: dev-base
-	$(container_run) adduser --system wanmap -d /opt/wanmap
-	$(container_run) mkdir -p /opt/wanmap/venv
-	$(container_run) chown -R wanmap:wanmap /opt/wanmap/venv
-	$(container_run) runuser wanmap -c 'pyvenv-3.5 /opt/wanmap/venv'
-	$(container_run_with_host_net) runuser wanmap -c '/opt/wanmap/venv/bin/pip install -r requirements.dev.txt'
-	$(container_run) mkdir -p /opt/wanmap/wanmap.egg-info
-	$(container_run) chmod 777 /opt/wanmap/wanmap.egg-info
-	$(container_run) runuser wanmap -c '/opt/wanmap/venv/bin/pip install -e /opt/wanmap'
+	$(container_run) adduser --system wanmap -m -d /opt/wanmap
+	$(container_run) runuser wanmap -c 'pyvenv-3.5 /opt/wanmap'
+	$(container_run_with_host_net) runuser wanmap -c '/opt/wanmap/bin/pip install -r requirements.dev.txt'
+	$(container_run) mkdir -p /wanmap/wanmap.egg-info
+	$(container_run) chmod 777 /wanmap/wanmap.egg-info
+	$(container_run) chmod 666 /wanmap/wanmap.egg-info/*
+	$(container_run) runuser wanmap -c '/opt/wanmap/bin/pip install -e /wanmap'
 
 dev-image: dev-virtualenv
 	$(container_run) dnf install -y make
-	$(container_run) make develop -C /opt/wanmap
+	$(container_run) make develop -C /wanmap
 
 dev-install:
 	# Override unreachable DNS resolvers copied by the Fedora template
 	cp /dev/null /etc/resolv.conf
-	(cd /opt/wanmap/vendor/openflow; ./boot.sh; ./configure; make install)
-	(cd /opt/wanmap/vendor/mininet; make install)
+	(cd /wanmap/vendor/openflow; ./boot.sh; ./configure; make install)
+	(cd /wanmap/vendor/mininet; make install)
 	sed -re 's/%% \{loopback_users, \[\]\},/\{loopback_users, \[\]\}/'\
 		-i /etc/rabbitmq/rabbitmq.config
 	postgresql-setup --initdb
@@ -75,9 +74,9 @@ distclean:
 
 
 develop: dev-install
-	sudo -u wanmap createdb wanmap
+	runuser wanmap -c 'createdb wanmap'
 	cp config/*.service -t /etc/systemd/system
 	install -m 440 -o root -g root config/wanmap-agent /etc/sudoers.d
 	systemctl daemon-reload
-	sudo -u wanmap venv/bin/initialize_wanmap_db development.ini
+	runuser wanmap -c '/opt/wanmap/bin/initialize_wanmap_db development.ini'
 	systemctl start wanmap-console wanmap-fake-wan

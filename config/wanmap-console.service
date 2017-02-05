@@ -6,5 +6,5 @@ After=wanmap-task-queue.service network.target
 [Service]
 User=wanmap
 Group=wanmap
-ExecStart=/opt/wanmap/venv/bin/pserve /opt/wanmap/development.ini --reload
+ExecStart=/opt/wanmap/bin/pserve /wanmap/development.ini --reload
 Restart=on-failure

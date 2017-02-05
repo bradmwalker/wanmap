@@ -5,7 +5,7 @@ After=openvswitch.service network.target
 
 [Service]
 Environment=PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin
-Environment=CELERY_PATH=/opt/wanmap/venv/bin/celery
-ExecStart=/opt/wanmap/testnet.py
+Environment=CELERY_PATH=/opt/wanmap/bin/celery
+ExecStart=/wanmap/testnet.py
 ExecStopPost=/bin/mn -c
 Restart=on-failure
