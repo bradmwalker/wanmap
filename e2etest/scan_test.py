@@ -7,6 +7,21 @@ from selenium.webdriver.support.ui import Select
 PING_SWEEP = '-sn -PE -n'
 
 
+@pytest.mark.nondestructive
+def test_fake_wan_scanners_online(base_url, selenium):
+    selenium.implicitly_wait(3)
+    selenium.get(base_url)
+
+    scanners_link = selenium.find_element_by_id('show-scanners')
+    scanners_link.click()
+
+    fake_wan_scanner_names = 'dmzscanner', 'external', 'scanner1', 'scanner2'
+    for scanner_name in fake_wan_scanner_names:
+        query = '//tr[td/a/text()="{}"]'.format(scanner_name)
+        scanner_row = selenium.find_element_by_xpath(query)
+        assert scanner_row
+
+
 @pytest.mark.selenium
 def test_splitting_scan_live(base_url, selenium):
     selenium.implicitly_wait(3)
