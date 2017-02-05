@@ -41,10 +41,6 @@ dev-image:
 	$(container_run_with_host_net) dnf -y install \
 		tcpdump lsof strace bind-utils
 
-	# Unpackaged Mininet dependencies
-	git clone git://github.com/mininet/openflow.git $(container_root)/root/openflow
-	git clone git://github.com/mininet/mininet.git $(container_root)/root/mininet
-
 	# Cache pip resources
 	# Downloading psycopg2 requires postgresql-devel?!
 	sudo dnf install -y postgresql-devel
@@ -60,8 +56,8 @@ dev-image:
 dev-image-install:
 	# Override unreachable DNS resolvers copied by the Fedora template
 	cp /dev/null /etc/resolv.conf
-	(cd /root/openflow; ./boot.sh; ./configure; make install)
-	(cd /root/mininet; make install)
+	(cd /opt/wanmap/vendor/openflow; ./boot.sh; ./configure; make install)
+	(cd /opt/wanmap/vendor/mininet; make install)
 	sed -re 's/%% \{loopback_users, \[\]\},/\{loopback_users, \[\]\}/'\
 		-i /etc/rabbitmq/rabbitmq.config
 	postgresql-setup --initdb
