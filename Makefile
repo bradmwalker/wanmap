@@ -18,6 +18,8 @@ container_run=lxc-attach -n wanmap-dev --
 container_run_with_host_net=lxc-attach -n wanmap-dev -s 'MOUNT|PID|UTSNAME|IPC' --
 container_root=/var/lib/lxc/wanmap-dev/rootfs
 dev-image:
+	mkdir -p /var/tmp/wanmap-dev
+	chmod 1777 /var/tmp/wanmap-dev
 	lxc-create -t fedora -n wanmap-dev -f lxc.config -B best -- -R 24
 	lxc-start -n wanmap-dev
 	sleep 3
@@ -47,9 +49,6 @@ dev-image:
 	# Downloading psycopg2 requires postgresql-devel?!
 	sudo dnf install -y postgresql-devel
 	pip3 download -d pip-cache -r requirements.dev.txt
-
-	mkdir -p /var/tmp/wanmap
-	chmod 775 /var/tmp/wanmap
 
 	dnf install -y nginx
 	-nginx -c $(shell realpath nginx.dev.conf)
