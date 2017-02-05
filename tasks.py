@@ -30,7 +30,10 @@ GUEST_NAME = 'wanmap-dev'
 class WANMapGuest(lxc.Container):
 
     def create(self):
-        super().create(template='fedora', args='-R 24', bdevtype='best')
+        super().create(
+            template='download',
+            args='-d fedora -r 24 -a amd64'.split(),
+            bdevtype='best')
 
     def isolate_net_from_host(self):
         self.append_config_item('lxc.network', '')
