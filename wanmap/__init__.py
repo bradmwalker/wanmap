@@ -7,6 +7,10 @@ from pyramid.session import SignedCookieSessionFactory
 _logger = logging.getLogger(__name__)
 
 
+def setup_shell(env):
+    env['dbsession'] = env['request'].dbsession
+
+
 def main(global_config, **settings):
     """Standard web server entry point."""
     return make_wsgi_app(settings)
