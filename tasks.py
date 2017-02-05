@@ -45,7 +45,7 @@ class WANMapGuest(lxc.Container):
 
     def share_host_var_tmp(self):
         host_var_tmp_path = self.host_var_tmp_path
-        os.makedirs(host_var_tmp_path, mode=0o755, exist_ok=True)
+        os.makedirs(host_var_tmp_path, mode=0o1777, exist_ok=True)
         self.append_config_item(
             'lxc.mount.entry',
             '{} var/tmp none bind,create=dir 0 0'.format(host_var_tmp_path))
