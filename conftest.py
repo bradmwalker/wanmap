@@ -12,12 +12,22 @@ FAKE_DNS_MAP = {
     'example.com': '93.184.216.34',
 }
 
-here = os.path.dirname(__file__)
-settings_path = os.path.join(here, 'test.ini')
-setup_logging(settings_path)
-settings = get_appsettings(settings_path, name='wanmap')
-
 _logger = logging.getLogger(__name__)
+
+
+# https://gist.github.com/inklesspen/4504383
+def pytest_addoption(parser):
+    parser.addoption(
+        '--ini', action='store', metavar='INI_FILE',
+        help='use INI_FILE to configure SQLAlchemy')
+
+
+# https://gist.github.com/inklesspen/4504383
+@pytest.fixture(scope='session')
+def appsettings(request):
+    config_uri = os.path.abspath(request.config.option.ini)
+    setup_logging(config_uri)
+    return get_appsettings(config_uri, name='wanmap')
 
 
 @pytest.fixture
@@ -33,15 +43,15 @@ def fresh_app(app):
 
 
 @pytest.fixture
-def app(dbsession):
+def app(dbsession, appsettings):
     from wanmap import make_wsgi_app
-    return TestApp(make_wsgi_app(settings))
+    return TestApp(make_wsgi_app(appsettings))
 
 
 @pytest.fixture(scope='session')
-def engine():
+def engine(appsettings):
     from wanmap.schema import get_engine
-    return get_engine(settings)
+    return get_engine(appsettings)
 
 
 @pytest.yield_fixture
