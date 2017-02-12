@@ -1,0 +1,13 @@
+language: python
+cache: pip
+python:
+  - "3.5"
+services:
+  - postgresql
+addns:
+  postgresql: "9.5"
+install: "pip install -r requirements.test.txt ."
+before_script:
+  - psql -c 'create database wanmap_test;' -U postgres
+  - initialize_wanmap_db test.ini
+script: pytest
