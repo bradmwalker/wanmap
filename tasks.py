@@ -177,3 +177,14 @@ def clean_guest(ctx):
     guest = WANMapGuest(GUEST_NAME)
     guest.stop()
     guest.destroy()
+
+
+@task
+def guest_shell(ctx, root=False, user=False):
+    """Default user is subject to change."""
+
+    guest = WANMapGuest(GUEST_NAME)
+    if not user or root:
+        guest.run('su - ')
+    else:
+        guest.run('su - wanmap')
