@@ -123,7 +123,7 @@ def install_guest_virtualenv(ctx):
     guest.run('sudo -u wanmap pyvenv-3.5 /opt/wanmap')
     guest.run_with_host_net(
         'sudo -u wanmap '
-        '/opt/wanmap/bin/pip install -r requirements.dev.txt')
+        '/opt/wanmap/bin/pip install -r /wanmap/requirements.dev.txt')
     guest.run('mkdir -p /wanmap/wanmap.egg-info')
     guest.run('chmod 777 /wanmap/wanmap.egg-info')
     guest.run('chmod 666 /wanmap/wanmap.egg-info/*')
