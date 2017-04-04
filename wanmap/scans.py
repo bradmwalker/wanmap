@@ -110,7 +110,9 @@ def show_scan(request):
         time = arrow.get(request.matchdict['time'])
     except arrow.parser.ParserError:
         raise HTTPNotFound()
-    scan = request.dbsession.query(Scan).get(time.datetime)
+    scan = (
+        request.dbsession.query(Scan).
+        filter_by(created_at=time.datetime).one_or_none())
     if not scan:
         raise HTTPNotFound()
     return {'scan': scan}

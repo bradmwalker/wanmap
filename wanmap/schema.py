@@ -1,5 +1,6 @@
 from ipaddress import ip_interface, ip_network
 import logging
+from uuid import uuid4
 
 import arrow
 from sqlalchemy import engine_from_config
@@ -91,7 +92,8 @@ class Scan(Persistable):
     """Top-level construct for a user-submitted network scan task."""
 
     __tablename__ = 'scans'
-    created_at = Column(DateTime(timezone=True), primary_key=True)
+    id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
     parameters = Column(String, nullable=False)
     type = Column(String, nullable=False)
 
@@ -106,8 +108,8 @@ class Scan(Persistable):
 
 class SplittingScan(Scan):
     __tablename__ = 'splitting_scans'
-    created_at = Column(
-        DateTime(timezone=True), ForeignKey('scans.created_at'),
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
         primary_key=True)
 
     __mapper_args__ = {'polymorphic_identity': 'splitting'}
@@ -117,7 +119,7 @@ class SplittingScan(Scan):
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
         created_at = arrow.now().datetime
-        scan = cls(created_at=created_at, parameters=parameters)
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
         scanners = session.query(Scanner).options(joinedload('subnets'))
         scan_targets = {
@@ -143,8 +145,8 @@ class SplittingScan(Scan):
 
 class DeltaScan(Scan):
     __tablename__ = 'delta_scans'
-    created_at = Column(
-        DateTime(timezone=True), ForeignKey('scans.created_at'),
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
         primary_key=True)
 
     __mapper_args__ = {'polymorphic_identity': 'delta'}
@@ -154,7 +156,7 @@ class DeltaScan(Scan):
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
         created_at = arrow.now().datetime
-        scan = cls(created_at=created_at, parameters=parameters)
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
         scannable_subnets = {
             ip_network(subnet) for subnet,
@@ -180,8 +182,8 @@ class ScanTarget(Persistable):
     """Scan task targets as initially specified."""
 
     __tablename__ = 'scan_targets'
-    scan_created_at = Column(
-        DateTime(timezone=True), ForeignKey('scans.created_at'),
+    scan_id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
         primary_key=True)
     net_block = Column(postgresql.INET, primary_key=True)
     hostname = Column(String(255))
@@ -209,8 +211,8 @@ class Subscan(Persistable):
     """
 
     __tablename__ = 'subscans'
-    scan_created_at = Column(
-        DateTime(timezone=True), ForeignKey('scans.created_at'),
+    scan_id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
         primary_key=True)
     scanner_name = Column(
         String(64), ForeignKey('scanners.name'), primary_key=True)
@@ -232,14 +234,14 @@ class SubscanTarget(Persistable):
     """A target of a scan subtask, after pruning to scanner's subnets."""
 
     __tablename__ = 'subscan_targets'
-    scan_created_at = Column(DateTime(timezone=True), primary_key=True)
+    scan_id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
     scanner_name = Column(String(64), primary_key=True)
     target = Column(postgresql.INET, primary_key=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ('scan_created_at', 'scanner_name'),
-            ('subscans.scan_created_at', 'subscans.scanner_name'),
+            ('scan_id', 'scanner_name'),
+            ('subscans.scan_id', 'subscans.scanner_name'),
         ),
     )
 

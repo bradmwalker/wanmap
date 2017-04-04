@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 
 import arrow
 from pyramid.httpexceptions import HTTPNotFound
@@ -15,7 +16,9 @@ _logger = logging.getLogger(__name__)
 @pytest.fixture
 def persisted_scan(dbsession):
     datetime = arrow.now().datetime
-    scan = SplittingScan(created_at=datetime, parameters=PING_SWEEP)
+    # TODO: Use constructor
+    scan = SplittingScan(
+        id=uuid4(), created_at=datetime, parameters=PING_SWEEP)
     dbsession.add(scan)
     dbsession.flush()
     return scan
