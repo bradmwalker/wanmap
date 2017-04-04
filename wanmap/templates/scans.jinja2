@@ -4,19 +4,20 @@
   <h4>Scans</h4>
   <table class="table">
     <thead>
-      <tr><th>Time</th><th>Type</th><th>Parameters</th></tr>
+      <tr><th>ID</th><th>Time</th><th>Type</th><th>Parameters</th></tr>
     </thead>
     <tbody>
     {% if scans %}
     {% for scan in scans %}
       <tr>
-        <td><a href="{{ request.route_url('show_scan', time=scan.created_at)  }}">{{ scan.created_at }}</a></td>
+        <td><a href="{{ request.route_url('show_scan', id=scan.id)  }}">{{ scan.id }}</a></td>
+        <td>{{ scan.created_at }}</td>
         <td>{{ scan.type }}</td>
         <td>{{ scan.parameters }}</td>
       </tr>
     {% endfor %}
     {% else %}
-      <tr><td span="3">No scans found.</td></tr>
+      <tr><td span="4">No scans found.</td></tr>
     {% endif %}
     </tbody>
   </table>

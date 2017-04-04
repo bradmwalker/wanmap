@@ -41,10 +41,10 @@ def _init(signal, sender, **kwargs):
 
 # TODO: Make a group/chord out of launching subscans
 @Background.task(ignore_results=True)
-def scan_workflow(scan_time):
-    _logger.info('Dispatching Scan: {}'.format(scan_time))
+def scan_workflow(scan_id):
+    _logger.info('Dispatching Scan: {}'.format(scan_id))
     dbsession = dbsession_factory()
-    scan = dbsession.query(Scan).get(scan_time)
+    scan = dbsession.query(Scan).get(scan_id)
     nmap_options = scan.parameters.split(' ')
     for subscan in scan.subscans:
         subscan_targets = [target.target for target in subscan.targets]
@@ -52,7 +52,7 @@ def scan_workflow(scan_time):
 
         exec_nmap_scan.apply_async(
             (scanner_name, nmap_options, subscan_targets),
-            link=record_subscan.s(scan_time, scanner_name))
+            link=record_subscan.s(scan_id, scanner_name))
 
 
 @Background.task
@@ -65,12 +65,12 @@ def exec_nmap_scan(scanner_name, nmap_options, targets):
 
 # Need a transaction for each subscan. Scans can be written incrementally.
 @Background.task(ignore_results=True)
-def record_subscan(subscan_result, scan_time, scanner_name):
+def record_subscan(subscan_result, scan_id, scanner_name):
     import transaction
     from .schema import get_tm_session
     with transaction.manager:
         dbsession = get_tm_session(dbsession_factory, transaction.manager)
-        subscan = dbsession.query(Subscan).get((scan_time, scanner_name))
+        subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
         subscan.xml_results = subscan_result
         dbsession.add(subscan)
 
