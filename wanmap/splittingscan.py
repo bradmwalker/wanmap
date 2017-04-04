@@ -57,11 +57,11 @@ def post_new_splitting_scan(request):
             'scan_form': e.render()
         }
     with transaction.manager:
-        scan_time = schedule_splitting_scan(
+        scan_id = schedule_splitting_scan(
             request.dbsession,
             appstruct['nmap_options'],
             *appstruct['scan_targets'])
-    scan_redirect = request.route_url('show_scan', time=scan_time.isoformat())
+    scan_redirect = request.route_url('show_scan', id=scan_id)
     return HTTPFound(location=scan_redirect)
 
 
@@ -72,8 +72,8 @@ def schedule_splitting_scan(dbsession, nmap_options, *targets):
         dbsession, parameters=nmap_options, targets=targets)
     # Look into using zope transaction manager for celery tasks that depend on
     # database records. Then mock out transactions.
-    scan_id, scan_time = scan.id, scan.created_at
+    scan_id = scan.id
     dbsession.add(scan)
     dbsession.flush()
     scan_workflow.apply_async((scan_id,), countdown=1)
-    return scan_time
+    return scan_id

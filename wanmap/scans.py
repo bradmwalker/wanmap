@@ -1,8 +1,8 @@
 from ipaddress import ip_network
 import logging
 import socket
+import uuid
 
-import arrow
 import colander
 from deform import widget
 from pyramid.httpexceptions import HTTPNotFound
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def includeme(config):
     config.add_route('show_scans', '/scans/')
-    config.add_route('show_scan', '/scans/{time}/')
+    config.add_route('show_scan', '/scans/{id}/')
     config.add_route('new_splitting_scan', '/scans/new-splitting')
     config.add_route('new_delta_scan', '/scans/new-delta')
 
@@ -107,12 +107,12 @@ class ScannerPair(colander.Schema):
 @view_config(route_name='show_scan', renderer='templates/scan.jinja2')
 def show_scan(request):
     try:
-        time = arrow.get(request.matchdict['time'])
-    except arrow.parser.ParserError:
+        # Hyphen separators and case insensitivity allow noncanonical
+        # representations.
+        id_ = uuid.UUID(request.matchdict['id'])
+    except ValueError:
         raise HTTPNotFound()
-    scan = (
-        request.dbsession.query(Scan).
-        filter_by(created_at=time.datetime).one_or_none())
+    scan = request.dbsession.query(Scan).get(id_)
     if not scan:
         raise HTTPNotFound()
     return {'scan': scan}

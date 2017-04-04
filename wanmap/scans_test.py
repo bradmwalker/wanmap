@@ -1,5 +1,5 @@
 import logging
-from uuid import uuid4
+import uuid
 
 import arrow
 from pyramid.httpexceptions import HTTPNotFound
@@ -18,28 +18,26 @@ def persisted_scan(dbsession):
     datetime = arrow.now().datetime
     # TODO: Use constructor
     scan = SplittingScan(
-        id=uuid4(), created_at=datetime, parameters=PING_SWEEP)
+        id=uuid.uuid4(), created_at=datetime, parameters=PING_SWEEP)
     dbsession.add(scan)
     dbsession.flush()
     return scan
 
 
-def test_show_scan_non_timestamp_fails(view_request):
-    view_request.matchdict['time'] = 'space'
+def test_show_scan_non_uuid_fails(view_request):
+    view_request.matchdict['id'] = '🐢'
     with pytest.raises(HTTPNotFound):
         show_scan(view_request)
 
 
 def test_show_scan_nonexistent_timestamp_fails(view_request):
-    time = arrow.now().datetime
-    view_request.matchdict['time'] = time
+    view_request.matchdict['id'] = str(uuid.uuid4())
     with pytest.raises(HTTPNotFound):
         show_scan(view_request)
 
 
-def test_show_scan_with_valid_timestamp(view_request, persisted_scan):
-    time = persisted_scan.created_at
-    view_request.matchdict['time'] = time
+def test_show_scan_with_valid_id(view_request, persisted_scan):
+    view_request.matchdict['id'] = str(persisted_scan.id)
     response = show_scan(view_request)
     assert response['scan'] is not None
 
