@@ -48,6 +48,15 @@ def test_splitting_scan_picks_gateway_behind_firewall():
     assert False
 
 
+def test_splitting_subscan_task_ids_initially_null(
+    dbsession, fake_wan_scanners):
+
+    scan = SplittingScan.create(
+        session=dbsession, parameters=PING_SWEEP,
+        targets=('10.0.0.0/8',))
+    assert not any(subscan.celery_task_id for subscan in scan.subscans)
+
+
 def test_create_splitting_scan_errors_on_no_targets(dbsession):
     with pytest.raises(ValueError):
         SplittingScan.create(

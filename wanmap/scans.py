@@ -254,6 +254,7 @@ class Subscan(Persistable):
         primary_key=True)
     scanner_name = Column(
         String(64), ForeignKey('scanners.name'), primary_key=True)
+    celery_task_id = Column(postgresql.UUID(as_uuid=True))
     started_at = Column(DateTime(timezone=True))
     finished_at = Column(DateTime(timezone=True))
     xml_results = Column(String)
