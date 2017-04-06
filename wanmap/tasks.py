@@ -2,6 +2,7 @@ import ipaddress
 import os.path
 import re
 from subprocess import check_output
+from uuid import uuid4
 
 import arrow
 from celery import Celery
@@ -65,7 +66,10 @@ def scan_workflow(self, scan_id):
         subscan_targets = [str(target.target) for target in subscan.targets]
         scanner_name = subscan.scanner.name
         subscan_key = (scan_id, scanner_name)
-        exec_nmap_scan.delay(subscan_key, nmap_options, subscan_targets)
+        subscan.celery_task_id = uuid4()
+        exec_nmap_scan.apply_async(
+            (subscan_key, nmap_options, subscan_targets),
+            task_id=str(subscan.celery_task_id))
 
 
 @Background.task(base=TransactionalTask)

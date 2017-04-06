@@ -4,7 +4,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from .scanners import Scanner
-from .tasks import PersistenceTask
+from .scans import PING_SWEEP
+from .splittingscan import SplittingScan
+from .tasks import Background, PersistenceTask
+from . import tasks
 
 
 def test_persistence_task_passes_initialized_dbsession(
@@ -83,3 +86,18 @@ def test_persistence_task_on_error_closes_session_with_work(
         pytest.raises(Exception):
         db_task()
     assert close.called
+
+
+def test_scan_workflow_dispatches_each_subscan(dbsession, fake_wan_scanners):
+
+    Background.dbsession_factory = lambda: dbsession
+
+    scan = SplittingScan.create(
+        session=dbsession, parameters=PING_SWEEP,
+        targets=('10.0.0.0/8',))
+    dbsession.add(scan)
+    dbsession.flush()
+    subscan_count = len(scan.subscans)
+    with patch('wanmap.tasks.exec_nmap_scan.apply_async') as exec_nmap_scan_spy:
+        tasks.scan_workflow(scan.id)
+    assert exec_nmap_scan_spy.called_count == subscan_count
