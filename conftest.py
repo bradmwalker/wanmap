@@ -1,3 +1,4 @@
+from itertools import starmap
 import logging
 import os
 
@@ -6,6 +7,7 @@ from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
 
+from wanmap.schema import Scanner
 
 FAKE_DNS_MAP = {
     'wanmap.local': '10.1.0.10',
@@ -78,3 +80,17 @@ def fake_dns(monkeypatch):
         return ip_address
 
     monkeypatch.setattr('socket.gethostbyname', _fake_dns)
+
+
+@pytest.fixture
+def fake_wan_scanners(dbsession):
+    """Scanner instances representing those in the E2E fake WAN environment."""
+    scanners = {
+        'dmzscanner': '203.0.113.254/24',
+        'external': '198.51.100.2/30',
+        'scanner1': '10.1.0.254/24',
+        'scanner2': '10.2.0.254/24',
+    }
+    scanners = tuple(starmap(Scanner.create, scanners.items()))
+    dbsession.add_all(scanners)
+    return scanners
