@@ -1,7 +1,6 @@
 import logging
 import uuid
 
-import arrow
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
@@ -14,11 +13,9 @@ _logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def persisted_scan(dbsession):
-    datetime = arrow.now().datetime
-    # TODO: Use constructor
-    scan = SplittingScan(
-        id=uuid.uuid4(), created_at=datetime, parameters=PING_SWEEP)
+def persisted_scan(dbsession, fake_wan_scanners):
+    scan = SplittingScan.create(
+        dbsession, parameters=PING_SWEEP, targets=('10.0.0.0/8',))
     dbsession.add(scan)
     dbsession.flush()
     return scan
