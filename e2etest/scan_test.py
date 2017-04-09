@@ -71,3 +71,30 @@ def test_delta_scan_live(base_url, selenium):
     assert '<address addr="203.0.113.1" addrtype="ipv4"/>' not in scan_results
     scan_results = selenium.find_element_by_id('dmzscanner-results').text
     assert '<address addr="203.0.113.1" addrtype="ipv4"/>' in scan_results
+
+
+@pytest.mark.parametrize('trial', range(5))     # Retry test of nondeterminism
+@pytest.mark.xfail
+@pytest.mark.selenium
+def test_fastest_scan_successfully_completes(base_url, selenium, trial):
+    """Tests the scan status event timing. When a subscan duration is extremely
+    short (~100ms), the mark started and subscan completion transactions race,
+    sometimes causing a subscan that never completes.
+    """
+
+    selenium.implicitly_wait(3)
+    selenium.get(base_url)
+
+    new_scan_link = selenium.find_element_by_id('new-splitting-scan')
+    new_scan_link.click()
+
+    # TODO: Rename field buttons
+    nmap_options = selenium.find_element_by_name('nmap_options')
+    nmap_options.send_keys(PING_SWEEP)
+    scan_targets = selenium.find_elements_by_name('scan_target')
+    scan_targets[0].send_keys('10.1.0.1')
+    scan_targets[0].send_keys(Keys.ENTER)
+
+    time.sleep(5)
+    scan_status = selenium.find_element_by_id('scan-status').text
+    assert scan_status == 'Completed'
