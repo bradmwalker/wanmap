@@ -3,6 +3,7 @@ import os.path
 import re
 from subprocess import check_output
 
+import arrow
 from celery import Celery
 from celery.signals import celeryd_after_setup, worker_process_init
 from celery.utils.log import get_task_logger
@@ -20,7 +21,7 @@ dbsession_factory = None
 
 SUDO = '/usr/bin/sudo'
 NMAP = '/usr/bin/nmap'
-NMAP_OUTPUT_OPTIONS = '-oG -'.split()
+NMAP_OUTPUT_OPTIONS = '-oX -'.split()
 
 _logger = get_task_logger(__name__)
 
@@ -51,28 +52,42 @@ def scan_workflow(scan_id):
         scanner_name = subscan.scanner.name
 
         exec_nmap_scan.apply_async(
-            (scanner_name, nmap_options, subscan_targets),
-            link=record_subscan.s(scan_id, scanner_name))
+            (scan_id, scanner_name, nmap_options, subscan_targets),
+            link=record_subscan_results.s(scan_id, scanner_name))
 
 
 @Background.task
-def exec_nmap_scan(scanner_name, nmap_options, targets):
+def exec_nmap_scan(scan_id, scanner_name, nmap_options, targets):
+    started_at = arrow.now().datetime
+    mark_subscan_started.delay(scan_id, scanner_name, started_at)
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
-    return check_output(nmap_command, universal_newlines=True)
+    finished_at = arrow.now().datetime
+    results_xml = check_output(nmap_command, universal_newlines=True)
+    return results_xml, (started_at, finished_at)
 
 
-# Need a transaction for each subscan. Scans can be written incrementally.
 @Background.task(ignore_results=True)
-def record_subscan(subscan_result, scan_id, scanner_name):
+def mark_subscan_started(scan_id, scanner_name, started_at):
     import transaction
     from .schema import get_tm_session
     with transaction.manager:
         dbsession = get_tm_session(dbsession_factory, transaction.manager)
         subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
-        subscan.xml_results = subscan_result
-        dbsession.add(subscan)
+        subscan.started_at = started_at
+
+
+# Need a transaction for each subscan. Scans can be written incrementally.
+@Background.task(ignore_results=True)
+def record_subscan_results(subscan_result, scan_id, scanner_name):
+    import transaction
+    from .schema import get_tm_session
+    subscan_result, duration = subscan_result
+    with transaction.manager:
+        dbsession = get_tm_session(dbsession_factory, transaction.manager)
+        subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
+        subscan.complete(subscan_result, duration)
 
 
 def get_scanner_interfaces():

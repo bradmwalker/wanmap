@@ -1,11 +1,29 @@
-{% extends "layout.jinja2" %}
+{% if not standalone %}{% extends "layout.jinja2" %}{% endif %}
 {% block content %}
-<div class="row">
-  <h4>Parameters: {{ scan.parameters }}</h4>
+<div id="scan" class="row">
+  <h4>Status: <span id="scan-status">{{ scan.status.name|capitalize }}</span> Parameters: {{ scan.parameters }}</h4>
   {% for subscan in scan.subscans %}
     <h5>{{ subscan.scanner_name }}</h5>
     <p>{% for target in subscan.targets %}{{ target.target }} {% endfor %}</p>
     <pre id="{{ subscan.scanner_name }}-results">{% if subscan.xml_results %}{{ subscan.xml_results }}{% endif %}</pre>
   {% endfor %}
 </div>
+{% if not standalone %}
+<script type="text/javascript" charset="utf-8">
+(function poll(){
+  setTimeout(function(){
+    if ($('#scan-status').text() !== 'Completed') {
+      $.get(
+        "{{ request.route_url('show_scan', id=scan.id, _query={'standalone': 'yes'}) }}",
+        null,
+        function (html) {
+          $('#scan').replaceWith(html);
+          poll();
+        }
+      );
+    }
+  }, 500);
+})();
+</script>
+{% endif %}
 {% endblock content %}

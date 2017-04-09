@@ -1,13 +1,23 @@
 import logging
 import uuid
 
+import arrow
+from datetime import timedelta
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
 from .scans import (
     show_scan, show_scans, PING_SWEEP,
 )
-from .schema import SplittingScan
+from .schema import Scan, SplittingScan
+
+FAKE_SCAN_RESULT_XML = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<!DOCTYPE nmaprun>'
+    '<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>'   # noqa
+    '<nmaprun/>'
+)
+
 
 _logger = logging.getLogger(__name__)
 
@@ -54,3 +64,55 @@ def test_list_scans_pagination(view_request):
     from .scans import SCAN_LISTING_PAGE_LENGTH
     result = show_scans(view_request)
     assert len(result['scans']) == SCAN_LISTING_PAGE_LENGTH
+
+
+def test_scan_initially_scheduled(persisted_scan):
+    assert persisted_scan.status == Scan.States.SCHEDULED
+
+
+def test_scan_starting_subscan_marks_scan_progressing(persisted_scan):
+    persisted_scan.subscans[0].started_at = arrow.now().datetime
+    assert persisted_scan.status == Scan.States.PROGRESSING
+
+
+def test_scan_all_subscans_finished_marks_scan_completed(persisted_scan):
+    for subscan in persisted_scan.subscans:
+        started_at = arrow.now().datetime
+        finished_at = started_at + timedelta(seconds=1)
+        subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
+    assert persisted_scan.status == Scan.States.COMPLETED
+
+
+def test_scan_not_all_subscans_finished_marks_scan_progressing(persisted_scan):
+    for subscan in persisted_scan.subscans:
+        subscan.started_at = arrow.now().datetime
+    for subscan in persisted_scan.subscans[:-1]:
+        started_at = arrow.now().datetime
+        finished_at = started_at + timedelta(seconds=1)
+        subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
+    assert persisted_scan.status == Scan.States.PROGRESSING
+
+
+@pytest.fixture
+def subscan(persisted_scan):
+    return persisted_scan.subscans[0]
+
+
+def test_subscan_time_information_initially_null(subscan):
+    assert subscan.started_at is None
+    assert subscan.finished_at is None
+
+
+def test_subscan_complete_sets_duration_timestamps(subscan):
+    started_at = arrow.now().datetime
+    finished_at = started_at + timedelta(seconds=1)
+    subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
+    assert subscan.started_at is not None
+    assert subscan.finished_at is not None
+
+
+def test_subscan_complete_sets_xml_result(subscan):
+    started_at = arrow.now().datetime
+    finished_at = started_at + timedelta(seconds=1)
+    subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
+    assert len(subscan.xml_results)

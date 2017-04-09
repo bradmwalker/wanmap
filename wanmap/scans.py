@@ -115,7 +115,8 @@ def show_scan(request):
     scan = request.dbsession.query(Scan).get(id_)
     if not scan:
         raise HTTPNotFound()
-    return {'scan': scan}
+    standalone = 'standalone' in request.params
+    return {'scan': scan, 'standalone': standalone}
 
 
 @view_config(route_name='show_scans', renderer='templates/scans.jinja2')

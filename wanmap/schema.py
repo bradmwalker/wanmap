@@ -1,3 +1,4 @@
+import enum
 from ipaddress import ip_interface, ip_network
 import logging
 from uuid import uuid4
@@ -91,6 +92,13 @@ class ScannerSubnet(Persistable):
 class Scan(Persistable):
     """Top-level construct for a user-submitted network scan task."""
 
+    @enum.unique
+    class States(enum.Enum):
+        """Possible overall states of an abstract scan."""
+        SCHEDULED = 1
+        PROGRESSING = 2
+        COMPLETED = 3
+
     __tablename__ = 'scans'
     id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
@@ -104,6 +112,18 @@ class Scan(Persistable):
         'polymorphic_identity': 'scan',
         'polymorphic_on': 'type'
     }
+
+    # TODO: Encapsulate Subscan status in Subscan class while implementing
+    # Scan cancellation.
+    @property
+    def status(self):
+        """The aggregate status of the Scan's subscans."""
+        if all(subscan.finished_at for subscan in self.subscans):
+            return Scan.States.COMPLETED
+        elif any(subscan.started_at for subscan in self.subscans):
+            return Scan.States.PROGRESSING
+        else:
+            return Scan.States.SCHEDULED
 
 
 class SplittingScan(Scan):
@@ -216,6 +236,8 @@ class Subscan(Persistable):
         primary_key=True)
     scanner_name = Column(
         String(64), ForeignKey('scanners.name'), primary_key=True)
+    started_at = Column(DateTime(timezone=True))
+    finished_at = Column(DateTime(timezone=True))
     xml_results = Column(String)
 
     targets = relationship('SubscanTarget', backref='subscan')
@@ -228,6 +250,11 @@ class Subscan(Persistable):
             SubscanTarget(target=target) for target in targets
         ]
         return subscan
+
+    # TODO: Make symmetric start method?
+    def complete(self, xml_results, duration):
+        self.xml_results = xml_results
+        self.started_at, self.finished_at = duration
 
 
 class SubscanTarget(Persistable):
