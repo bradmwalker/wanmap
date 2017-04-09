@@ -251,14 +251,10 @@ class Subscan(Persistable):
         ]
         return subscan
 
-    def mark_started(self):
-        self.started_at = arrow.now().datetime
-
-    def mark_finished(self, xml_results):
-        assert self.started_at, \
-            "Subscan must have been marked started before it can finish."
-        self.finished_at = arrow.now().datetime
+    # TODO: Make symmetric start method?
+    def complete(self, xml_results, duration):
         self.xml_results = xml_results
+        self.started_at, self.finished_at = duration
 
 
 class SubscanTarget(Persistable):

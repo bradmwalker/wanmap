@@ -74,7 +74,6 @@ def test_delta_scan_live(base_url, selenium):
 
 
 @pytest.mark.parametrize('trial', range(5))     # Retry test of nondeterminism
-@pytest.mark.xfail
 @pytest.mark.selenium
 def test_fastest_scan_successfully_completes(base_url, selenium, trial):
     """Tests the scan status event timing. When a subscan duration is extremely

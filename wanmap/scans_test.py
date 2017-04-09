@@ -1,6 +1,8 @@
 import logging
 import uuid
 
+import arrow
+from datetime import timedelta
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
@@ -69,22 +71,25 @@ def test_scan_initially_scheduled(persisted_scan):
 
 
 def test_scan_starting_subscan_marks_scan_progressing(persisted_scan):
-    persisted_scan.subscans[0].mark_started()
+    persisted_scan.subscans[0].started_at = arrow.now().datetime
     assert persisted_scan.status == Scan.States.PROGRESSING
 
 
 def test_scan_all_subscans_finished_marks_scan_completed(persisted_scan):
     for subscan in persisted_scan.subscans:
-        subscan.mark_started()
-        subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+        started_at = arrow.now().datetime
+        finished_at = started_at + timedelta(seconds=1)
+        subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
     assert persisted_scan.status == Scan.States.COMPLETED
 
 
 def test_scan_not_all_subscans_finished_marks_scan_progressing(persisted_scan):
     for subscan in persisted_scan.subscans:
-        subscan.mark_started()
+        subscan.started_at = arrow.now().datetime
     for subscan in persisted_scan.subscans[:-1]:
-        subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+        started_at = arrow.now().datetime
+        finished_at = started_at + timedelta(seconds=1)
+        subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
     assert persisted_scan.status == Scan.States.PROGRESSING
 
 
@@ -98,18 +103,16 @@ def test_subscan_time_information_initially_null(subscan):
     assert subscan.finished_at is None
 
 
-def test_subscan_mark_started_sets_timestamp(subscan):
-    subscan.mark_started()
+def test_subscan_complete_sets_duration_timestamps(subscan):
+    started_at = arrow.now().datetime
+    finished_at = started_at + timedelta(seconds=1)
+    subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
     assert subscan.started_at is not None
-
-
-def test_subscan_mark_finished_sets_timestamp(subscan):
-    subscan.mark_started()
-    subscan.mark_finished(FAKE_SCAN_RESULT_XML)
     assert subscan.finished_at is not None
 
 
-def test_subscan_mark_finished_sets_xml_result(subscan):
-    subscan.mark_started()
-    subscan.mark_finished(FAKE_SCAN_RESULT_XML)
+def test_subscan_complete_sets_xml_result(subscan):
+    started_at = arrow.now().datetime
+    finished_at = started_at + timedelta(seconds=1)
+    subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
     assert len(subscan.xml_results)
