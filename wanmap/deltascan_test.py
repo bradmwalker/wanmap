@@ -5,6 +5,28 @@ from .deltascan import DeltaScanSchema
 from .scans import (
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE, PING_SWEEP,
 )
+from .schema import DeltaScan
+
+
+def test_create_delta_scan(dbsession, fake_wan_scanners):
+    scanner_a, scanner_b, *_ = (scanner.name for scanner in fake_wan_scanners)
+    scan = DeltaScan.create(
+        session=dbsession, parameters=PING_SWEEP,
+        scanner_names=(scanner_a, scanner_b,), targets=('10.1.0.1',))
+    subscan_targets = {
+        target.target
+        for subscan in scan.subscans
+        for target in subscan.targets
+    }
+    assert subscan_targets == {'10.1.0.1/32'}
+
+
+def test_create_delta_scan_errors_on_no_targets(dbsession, fake_wan_scanners):
+    scanner_names = tuple(scanner.name for scanner in fake_wan_scanners)
+    with pytest.raises(ValueError):
+        DeltaScan.create(
+            session=dbsession, parameters=PING_SWEEP,
+            scanner_names=scanner_names, targets=())
 
 
 @pytest.fixture
