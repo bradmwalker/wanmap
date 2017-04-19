@@ -10,6 +10,7 @@ task_create_missing_queues = False
 worker_direct = True
 task_default_queue = 'console'
 task_default_routing_key = 'console'
+task_ignore_results = True
 
 
 class ScanRouter:

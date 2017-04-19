@@ -41,7 +41,7 @@ def _init(signal, sender, **kwargs):
 
 
 # TODO: Make a group/chord out of launching subscans
-@Background.task(ignore_results=True)
+@Background.task
 def scan_workflow(scan_id):
     _logger.info('Dispatching Scan: {}'.format(scan_id))
     dbsession = dbsession_factory()
@@ -68,7 +68,7 @@ def exec_nmap_scan(scan_id, scanner_name, nmap_options, targets):
     return results_xml, (started_at, finished_at)
 
 
-@Background.task(ignore_results=True)
+@Background.task
 def mark_subscan_started(scan_id, scanner_name, started_at):
     import transaction
     from .schema import get_tm_session
@@ -79,7 +79,7 @@ def mark_subscan_started(scan_id, scanner_name, started_at):
 
 
 # Need a transaction for each subscan. Scans can be written incrementally.
-@Background.task(ignore_results=True)
+@Background.task
 def record_subscan_results(subscan_result, scan_id, scanner_name):
     import transaction
     from .schema import get_tm_session
@@ -113,7 +113,7 @@ def register_scanner(sender, instance, **kwargs):
         persist_scanner.delay(name, interfaces)
 
 
-@Background.task(ignore_results=True)
+@Background.task
 def persist_scanner(name, interfaces):
     import transaction
     from .schema import get_tm_session
