@@ -1,15 +1,15 @@
 from kombu import Exchange, Queue
 
-CELERY_RESULT_BACKEND = 'rpc://'
+result_backend = 'rpc://'
 
-CELERY_QUEUES = (
+task_queues = (
     Queue('console', Exchange('default', type='direct'), routing_key='console'),
 )
 
-CELERY_CREATE_MISSING_QUEUES = False
-CELERY_WORKER_DIRECT = True
-CELERY_DEFAULT_QUEUE = 'console'
-CELERY_DEFAULT_ROUTING_KEY = 'console'
+task_create_missing_queues = False
+worker_direct = True
+task_default_queue = 'console'
+task_default_routing_key = 'console'
 
 
 class ScanRouter:
@@ -23,4 +23,5 @@ class ScanRouter:
             }
         return None
 
-CELERY_ROUTES = (ScanRouter(),)
+
+task_routes = (ScanRouter(),)
