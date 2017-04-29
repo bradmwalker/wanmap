@@ -7,6 +7,7 @@ from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
 
+import wanmap.schema
 from wanmap.schema import Scanner
 
 FAKE_DNS_MAP = {
@@ -56,17 +57,16 @@ def engine(appsettings):
     return get_engine(appsettings)
 
 
-@pytest.yield_fixture
-def dbsession(engine):
-    from wanmap.schema import get_session_factory
-    connection = engine.connect()
-    trans = connection.begin()
-    session_factory = get_session_factory(connection)
+@pytest.fixture(scope='session')
+def session_factory(engine):
+    return wanmap.schema.get_session_factory(engine)
+
+
+@pytest.fixture
+def dbsession(session_factory):
     _dbsession = session_factory()
     yield _dbsession
     _dbsession.close()
-    trans.rollback()
-    connection.close()
 
 
 @pytest.fixture
