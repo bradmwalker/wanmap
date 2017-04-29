@@ -39,7 +39,7 @@ Persistable = declarative_base(metadata=metadata)
 def includeme(config):
     config.include('pyramid_tm')
     settings = config.get_settings()
-    session_factory = get_session_factory(get_engine(settings))
+    session_factory = get_session_factory(settings)
     config.registry['dbsession_factory'] = session_factory
     # make request.dbsession available for use in Pyramid
     config.add_request_method(
@@ -280,9 +280,9 @@ def get_engine(settings, prefix='sqlalchemy.'):
     return engine
 
 
-def get_session_factory(connectable):
-    factory = sessionmaker()
-    factory.configure(bind=connectable)
+def get_session_factory(settings):
+    engine = get_engine(settings)
+    factory = sessionmaker(bind=engine)
     return factory
 
 

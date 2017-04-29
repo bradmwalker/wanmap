@@ -52,14 +52,8 @@ def app(dbsession, appsettings):
 
 
 @pytest.fixture(scope='session')
-def engine(appsettings):
-    from wanmap.schema import get_engine
-    return get_engine(appsettings)
-
-
-@pytest.fixture(scope='session')
-def session_factory(engine):
-    return wanmap.schema.get_session_factory(engine)
+def session_factory(appsettings):
+    return wanmap.schema.get_session_factory(appsettings)
 
 
 @pytest.fixture

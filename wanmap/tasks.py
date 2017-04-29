@@ -16,7 +16,6 @@ __all__ = ['scan_workflow']
 Background = Celery()
 Background.config_from_object('wanmap.celeryconfig')
 
-engine = None
 dbsession_factory = None
 
 SUDO = '/usr/bin/sudo'
@@ -29,15 +28,13 @@ _logger = get_task_logger(__name__)
 # TODO: Register Queue for hostname, and only initialize DB if console node
 @worker_process_init.connect
 def _init(signal, sender, **kwargs):
-    from .schema import get_engine, get_session_factory
-    global engine
+    from . import schema
     global dbsession_factory
     here = os.path.dirname(__file__)
     settings_path = os.path.join(here, '../', 'development.ini')
     setup_logging(settings_path)
     settings = get_appsettings(settings_path, name='wanmap')
-    engine = get_engine(settings)
-    dbsession_factory = get_session_factory(engine)
+    dbsession_factory = schema.get_session_factory(settings)
 
 
 # TODO: Make a group/chord out of launching subscans
