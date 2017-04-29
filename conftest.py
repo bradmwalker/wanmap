@@ -1,6 +1,7 @@
 from itertools import starmap
 import logging
 import os
+from unittest.mock import patch
 
 from pyramid.paster import get_appsettings, setup_logging
 from pyramid.testing import DummyRequest
@@ -53,7 +54,9 @@ def app(dbsession, appsettings):
 
 @pytest.fixture(scope='session')
 def session_factory(appsettings):
-    return wanmap.schema.get_session_factory(appsettings)
+    factory = wanmap.schema.get_session_factory(appsettings)
+    with patch('wanmap.schema.get_session_factory', return_value=factory):
+        yield factory
 
 
 @pytest.fixture
