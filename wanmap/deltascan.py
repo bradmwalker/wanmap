@@ -83,5 +83,5 @@ def schedule_delta_scan(dbsession, nmap_options, scanner_names, *targets):
     scan_id = scan.id
     dbsession.add(scan)
     dbsession.flush()
-    scan_workflow.apply_async((scan_id,), countdown=1)
+    scan_workflow.delay(scan_id)
     return scan_id
