@@ -1,12 +1,14 @@
 from itertools import starmap
 import logging
 import os
+from unittest.mock import patch
 
 from pyramid.paster import get_appsettings, setup_logging
 from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
 
+import wanmap.schema
 from wanmap.schema import Scanner
 
 FAKE_DNS_MAP = {
@@ -51,22 +53,17 @@ def app(dbsession, appsettings):
 
 
 @pytest.fixture(scope='session')
-def engine(appsettings):
-    from wanmap.schema import get_engine
-    return get_engine(appsettings)
+def session_factory(appsettings):
+    factory = wanmap.schema.get_session_factory(appsettings)
+    with patch('wanmap.schema.get_session_factory', return_value=factory):
+        yield factory
 
 
-@pytest.yield_fixture
-def dbsession(engine):
-    from wanmap.schema import get_session_factory
-    connection = engine.connect()
-    trans = connection.begin()
-    session_factory = get_session_factory(connection)
+@pytest.fixture
+def dbsession(session_factory):
     _dbsession = session_factory()
     yield _dbsession
     _dbsession.close()
-    trans.rollback()
-    connection.close()
 
 
 @pytest.fixture

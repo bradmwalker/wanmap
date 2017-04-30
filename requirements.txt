@@ -15,6 +15,7 @@ psycopg2==2.7.1
 pyramid==1.8.3
 pyramid-jinja2==2.7
 pyramid-tm==2.0
+pyramid-transactional-celery==0.1.1
 python-dateutil==2.6.0
 pytz==2017.2
 repoze.lru==0.6

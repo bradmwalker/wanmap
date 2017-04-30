@@ -5,9 +5,11 @@ from subprocess import check_output
 
 import arrow
 from celery import Celery
+from celery.app import app_or_default
 from celery.signals import celeryd_after_setup, worker_process_init
 from celery.utils.log import get_task_logger
 from pyramid.paster import get_appsettings, setup_logging
+from pyramid_transactional_celery import TransactionalTask
 
 from .schema import Scan, Scanner, Subscan
 
@@ -16,9 +18,6 @@ __all__ = ['scan_workflow']
 Background = Celery()
 Background.config_from_object('wanmap.celeryconfig')
 
-engine = None
-dbsession_factory = None
-
 SUDO = '/usr/bin/sudo'
 NMAP = '/usr/bin/nmap'
 NMAP_OUTPUT_OPTIONS = '-oX -'.split()
@@ -26,68 +25,74 @@ NMAP_OUTPUT_OPTIONS = '-oX -'.split()
 _logger = get_task_logger(__name__)
 
 
-# TODO: Register Queue for hostname, and only initialize DB if console node
+class PersistenceTask(TransactionalTask):
+
+    def __call__(self, *args, **kwargs):
+        import transaction
+        from .schema import get_tm_session
+        with transaction.manager as _transaction:
+            try:
+                self.dbsession = get_tm_session(
+                    self.app.dbsession_factory, transaction.manager)
+                super().__call__(*args, **kwargs)
+            except:
+                _logger.warning('Aborting transaction.')
+                _transaction.abort()
+                raise
+
+
+# TODO: Only initialize DB if console node.
 @worker_process_init.connect
 def _init(signal, sender, **kwargs):
-    from .schema import get_engine, get_session_factory
-    global engine
-    global dbsession_factory
+    from . import schema
+    app = app_or_default()
     here = os.path.dirname(__file__)
     settings_path = os.path.join(here, '../', 'development.ini')
     setup_logging(settings_path)
     settings = get_appsettings(settings_path, name='wanmap')
-    engine = get_engine(settings)
-    dbsession_factory = get_session_factory(engine)
+    app.dbsession_factory = schema.get_session_factory(settings)
 
 
 # TODO: Make a group/chord out of launching subscans
-@Background.task
-def scan_workflow(scan_id):
+@Background.task(base=PersistenceTask, bind=True)
+def scan_workflow(self, scan_id):
     _logger.info('Dispatching Scan: {}'.format(scan_id))
-    dbsession = dbsession_factory()
-    scan = dbsession.query(Scan).get(scan_id)
+    scan = self.dbsession.query(Scan).get(scan_id)
     nmap_options = scan.parameters.split(' ')
     for subscan in scan.subscans:
         subscan_targets = [target.target for target in subscan.targets]
         scanner_name = subscan.scanner.name
-
-        exec_nmap_scan.apply_async(
-            (scan_id, scanner_name, nmap_options, subscan_targets),
-            link=record_subscan_results.s(scan_id, scanner_name))
+        subscan_key = (scan_id, scanner_name)
+        exec_nmap_scan.delay(subscan_key, nmap_options, subscan_targets)
 
 
-@Background.task
-def exec_nmap_scan(scan_id, scanner_name, nmap_options, targets):
+@Background.task(base=TransactionalTask)
+def exec_nmap_scan(subscan_key, nmap_options, targets):
     started_at = arrow.now().datetime
-    mark_subscan_started.delay(scan_id, scanner_name, started_at)
+    import transaction
+    with transaction.manager:
+        mark_subscan_started.delay(subscan_key, started_at)
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
     finished_at = arrow.now().datetime
     results_xml = check_output(nmap_command, universal_newlines=True)
-    return results_xml, (started_at, finished_at)
-
-
-@Background.task
-def mark_subscan_started(scan_id, scanner_name, started_at):
-    import transaction
-    from .schema import get_tm_session
+    duration = (started_at, finished_at)
     with transaction.manager:
-        dbsession = get_tm_session(dbsession_factory, transaction.manager)
-        subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
-        subscan.started_at = started_at
+        record_subscan_results.delay(subscan_key, results_xml, duration)
+
+
+@Background.task(base=PersistenceTask, bind=True)
+def mark_subscan_started(self, subscan_key, started_at):
+    subscan = self.dbsession.query(Subscan).get(subscan_key)
+    subscan.started_at = started_at
 
 
 # Need a transaction for each subscan. Scans can be written incrementally.
-@Background.task
-def record_subscan_results(subscan_result, scan_id, scanner_name):
-    import transaction
-    from .schema import get_tm_session
-    subscan_result, duration = subscan_result
-    with transaction.manager:
-        dbsession = get_tm_session(dbsession_factory, transaction.manager)
-        subscan = dbsession.query(Subscan).get((scan_id, scanner_name))
-        subscan.complete(subscan_result, duration)
+@Background.task(base=PersistenceTask, bind=True)
+def record_subscan_results(self, subscan_key, subscan_result, duration):
+    subscan = self.dbsession.query(Subscan).get(subscan_key)
+    subscan.complete(subscan_result, duration)
 
 
 def get_scanner_interfaces():
@@ -109,15 +114,13 @@ def get_scanner_interfaces():
 def register_scanner(sender, instance, **kwargs):
     role, name = sender.split('@')
     if role == 'scanner':
-        interfaces = get_scanner_interfaces()
-        persist_scanner.delay(name, interfaces)
+        import transaction
+        with transaction.manager:
+            interfaces = get_scanner_interfaces()
+            persist_scanner.delay(name, interfaces)
 
 
-@Background.task
-def persist_scanner(name, interfaces):
-    import transaction
-    from .schema import get_tm_session
-    with transaction.manager:
-        dbsession = get_tm_session(dbsession_factory, transaction.manager)
-        scanner = Scanner.create(name=name, interface_address=interfaces[0])
-        dbsession.merge(scanner)
+@Background.task(base=PersistenceTask, bind=True)
+def persist_scanner(self, name, interfaces):
+    scanner = Scanner.create(name=name, interface_address=interfaces[0])
+    self.dbsession.merge(scanner)
