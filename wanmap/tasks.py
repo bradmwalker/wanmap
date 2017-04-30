@@ -62,38 +62,36 @@ def scan_workflow(self, scan_id):
     for subscan in scan.subscans:
         subscan_targets = [target.target for target in subscan.targets]
         scanner_name = subscan.scanner.name
-
-        exec_nmap_scan.delay(
-            scan_id, scanner_name, nmap_options, subscan_targets)
+        subscan_key = (scan_id, scanner_name)
+        exec_nmap_scan.delay(subscan_key, nmap_options, subscan_targets)
 
 
 @Background.task(base=TransactionalTask)
-def exec_nmap_scan(scan_id, scanner_name, nmap_options, targets):
+def exec_nmap_scan(subscan_key, nmap_options, targets):
     started_at = arrow.now().datetime
     import transaction
     with transaction.manager:
-        mark_subscan_started.delay(scan_id, scanner_name, started_at)
+        mark_subscan_started.delay(subscan_key, started_at)
     nmap_options, targets = list(nmap_options), list(targets)
     nmap_command = [SUDO, NMAP] + NMAP_OUTPUT_OPTIONS + nmap_options + targets
     _logger.info('Executing {!r}'.format(' '.join(nmap_command)))
     finished_at = arrow.now().datetime
     results_xml = check_output(nmap_command, universal_newlines=True)
+    duration = (started_at, finished_at)
     with transaction.manager:
-        record_subscan_results.delay(
-            scan_id, scanner_name, (results_xml, (started_at, finished_at)))
+        record_subscan_results.delay(subscan_key, results_xml, duration)
 
 
 @Background.task(base=PersistenceTask, bind=True)
-def mark_subscan_started(self, scan_id, scanner_name, started_at):
-    subscan = self.dbsession.query(Subscan).get((scan_id, scanner_name))
+def mark_subscan_started(self, subscan_key, started_at):
+    subscan = self.dbsession.query(Subscan).get(subscan_key)
     subscan.started_at = started_at
 
 
 # Need a transaction for each subscan. Scans can be written incrementally.
 @Background.task(base=PersistenceTask, bind=True)
-def record_subscan_results(self, scan_id, scanner_name, subscan_result):
-    subscan_result, duration = subscan_result
-    subscan = self.dbsession.query(Subscan).get((scan_id, scanner_name))
+def record_subscan_results(self, subscan_key, subscan_result, duration):
+    subscan = self.dbsession.query(Subscan).get(subscan_key)
     subscan.complete(subscan_result, duration)
 
 
