@@ -8,6 +8,7 @@ from __future__ import print_function, unicode_literals
 from ipaddress import ip_interface, ip_network, IPv4Network
 from itertools import count
 import os
+import re
 import sys
 import time
 
@@ -154,10 +155,22 @@ class ScannerNode(Node):
 
     def config(self, broker_url, **params):
         super(ScannerNode, self).config(**params)
+        # Establish connectivity before starting Celery to ensure
+        # celeryd_after_setup event messages persist_scanner task.
+        broker_ip_address = extract_ipv4_address(broker_url)
+        ping_wait = "(until nping --tcp -p 5672 -c 1 {0} | grep ' SA '; do sleep .5; done)".format(broker_ip_address)
         cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
         cmd = cmd.format(CELERY_PATH, broker_url, self.name)
-        cmd = "runuser -c -u wanmap '{0}' &".format(cmd)
-        self.cmd(cmd)
+        launch_celery = "runuser -c -u wanmap '{0}'".format(cmd)
+        self.cmd('echo', '; '.join((ping_wait, launch_celery,)))
+        self.cmd('{} && {} &'.format(ping_wait, launch_celery))
+
+
+def extract_ipv4_address(str_):
+    pattern = r'(?:\d{1,3}\.){3}\d{1,3}'
+    match = re.search(pattern, str_)
+    if match:
+        return match.group(0)
 
 
 def _block_indefinitely():
