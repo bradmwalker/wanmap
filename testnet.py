@@ -12,7 +12,7 @@ import time
 
 from mininet.log import setLogLevel
 from mininet.net import Mininet
-from mininet.node import Node
+from mininet.node import Node, OVSBridge
 # Circular dependency
 from mininet.link import Link, TCLink
 
@@ -56,8 +56,7 @@ class ScannerNode(Node):
 
 def run(interactive):
     "Test linux router"
-    net = Mininet()  # controller is used by s1-s2
-    net.addController('c0')
+    net = Mininet(switch=OVSBridge)
 
     dc_gateway = ip_interface(u'10.1.0.1/24')
     dc_subnet = dc_gateway.network
