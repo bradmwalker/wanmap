@@ -109,8 +109,6 @@ def install_guest_mininet(ctx):
     guest = WANMapGuest(GUEST_NAME)
 
     ctx.run('git submodule update --init')
-    guest.run_args(
-        ['bash', '-c', 'cd /wanmap/vendor/openflow; make distclean; ./boot.sh; ./configure; make install'])
     guest.run_args(['bash', '-c', 'cd /wanmap/vendor/mininet; make distclean; make install'])
 
 
