@@ -45,11 +45,12 @@ class FakeWAN(object):
     def run(self, interactive):
         net = self._net
 
-        dc_subnet = ip_network(u'10.1.0.0/24')
+        dc_subnets = tuple(ip_network(u'10.1.0.0/16').subnets(4))
+        dc_subnet = dc_subnets[0]
         dmz_subnet = ip_network(u'203.0.113.0/24')
         branch_subnet = ip_network(u'10.2.0.0/24')
 
-        dc_dist = self.add_router('r0', dc_subnet)
+        dc_dist = self.add_router('r0', *dc_subnets)
         dmz_fw = self.add_router('dmz', dmz_subnet)
         branch_dist = self.add_router('r1', branch_subnet)
 
@@ -88,7 +89,7 @@ class FakeWAN(object):
         dmz_fw.cmd('iptables -A FORWARD -d 10.1.0.10 -m tcp -p tcp --dport amqp --syn -j ACCEPT')
         dmz_fw.cmd('iptables -A FORWARD -j DROP')
 
-        self.add_scanner('scanner1', '10.1.0.254/24')
+        self.add_scanner('scanner1', '10.1.0.254/20')
         self.add_scanner('scanner2', '10.2.0.254/24')
         self.add_scanner('dmzscanner', '203.0.113.254/24')
 
