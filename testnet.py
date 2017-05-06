@@ -5,7 +5,7 @@ Create a network and inject scanner agents.
 
 from __future__ import print_function, unicode_literals
 
-from ipaddress import ip_interface
+from ipaddress import ip_interface, IPv4Network
 from itertools import count
 import os
 import sys
@@ -39,18 +39,19 @@ class FakeWAN(object):
     def __init__(self):
         self._net = Mininet(switch=OVSBridge)
         self._switch_id_sequence = count()
+        self._switches = {}
 
     def run(self, interactive):
         net = self._net
 
         dc_gateway = ip_interface(u'10.1.0.1/24')
-        dc_switch = self._new_switch()
+        dc_switch = self._new_switch(dc_gateway.subnet)
         dmz_gateway = ip_interface(u'203.0.113.1/24')
         dmz_subnet = dmz_gateway.network
-        dmz_switch = self._new_switch()
+        dmz_switch = self._new_switch(dmz_subnet)
         branch_gateway = ip_interface(u'10.2.0.1/24')
         branch_subnet = branch_gateway.network
-        branch_switch = self._new_switch()
+        branch_switch = self._new_switch(branch_subnet)
 
         dc_dist = net.addHost('r0', cls=LinuxRouter, ip=str(dc_gateway))
         dmz_fw = net.addHost('dmz', cls=LinuxRouter, ip=str(dmz_gateway))
@@ -122,9 +123,12 @@ class FakeWAN(object):
         else:
             net.run(_block_indefinitely)
 
-    def _new_switch(self):
+    def _new_switch(self, subnet):
+        assert isinstance(subnet, IPv4Network)
         switch_id = 's{:d}'.format(next(self._switch_id_sequence))
-        return self._net.addSwitch(switch_id)
+        switch = self._net.addSwitch(switch_id)
+        self._switches[subnet] = switch
+        return switch
 
 
 class LinuxRouter(Node):
