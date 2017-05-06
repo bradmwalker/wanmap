@@ -115,16 +115,20 @@ class FakeWAN(object):
         return router
 
     def add_scanner(self, name, ip_address, broker_url=None, **kwargs):
+        return self.add_host(
+            name, ip_address,
+            cls=ScannerNode, broker_url=broker_url or INTERNAL_BROKER_URL)
+
+    def add_host(self, name, ip_address, **kwargs):
         subnet = ip_interface(ip_address).network
         gateway = next(subnet.hosts())
 
-        scanner = self._net.addHost(
+        host = self._net.addHost(
             name,
-            cls=ScannerNode, broker_url=broker_url or INTERNAL_BROKER_URL,
             ip=ip_address, defaultRoute='via {}'.format(gateway),
             **kwargs)
-        self._net.addLink(scanner, self._switches[subnet])
-        return scanner
+        self._net.addLink(host, self._switches[subnet])
+        return host
 
     def _new_switch(self, subnet):
         assert isinstance(subnet, IPv4Network)
