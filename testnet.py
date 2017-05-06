@@ -145,9 +145,27 @@ class FakeWAN(object):
 class LinuxRouter(Node):
     "A Node with IP forwarding enabled."
 
+    def __init__(self, name):
+        privateDirs = ['/rw']
+        super(LinuxRouter, self).__init__(name, privateDirs=privateDirs)
+
     def config(self, **params):
         super(LinuxRouter, self).config(**params)
         self.cmd('sysctl net.ipv4.ip_forward=1')
+        self._initialize_ssh()
+        self.cmd('/usr/sbin/sshd -D &')
+
+    def _initialize_ssh(self):
+        """Generate sshd keys in an ephemeral directory inheriting the base
+        distro's sshd_config.
+        """
+
+        self.cmd('mkdir -p /rw/etc/ssh /rw/work')
+        self.cmd(
+            'mount -v -t overlay overlay '
+            '-o lowerdir=/etc/ssh,upperdir=/rw/etc/ssh,workdir=/rw/work '
+            '/etc/ssh')
+        self.cmd('/usr/sbin/sshd-keygen {}'.format(self.name))
 
     def terminate(self):
         self.cmd('sysctl net.ipv4.ip_forward=0')
