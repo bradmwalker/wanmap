@@ -102,16 +102,18 @@ class FakeWAN(object):
         else:
             net.run(_block_indefinitely)
 
-    def add_router(self, name, subnet):
-        assert isinstance(subnet, IPv4Network)
+    def add_router(self, name, *subnets):
+        assert all(isinstance(subnet, IPv4Network) for subnet in subnets)
         router = LinuxRouter(name)
         self._net.hosts.append(router)
         self._net.nameToNode[name] = router
 
-        switch = self._new_switch(subnet)
-        gateway_address = '{}/{}'.format(next(subnet.hosts()), subnet.prefixlen)
-        gateway_link = Link(router, switch)
-        gateway_link.intf1.setIP(gateway_address)
+        for subnet in subnets:
+            switch = self._new_switch(subnet)
+            gateway_address = '{}/{}'.format(
+                next(subnet.hosts()), subnet.prefixlen)
+            gateway_link = Link(router, switch)
+            gateway_link.intf1.setIP(gateway_address)
 
         return router
 
