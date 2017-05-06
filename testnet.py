@@ -35,8 +35,11 @@ def main():
 
 class FakeWAN(object):
 
+    def __init__(self):
+        self._net = Mininet(switch=OVSBridge)
+
     def run(self, interactive):
-        net = Mininet(switch=OVSBridge)
+        net = self._net
 
         dc_gateway = ip_interface(u'10.1.0.1/24')
         dmz_gateway = ip_interface(u'203.0.113.1/24')
