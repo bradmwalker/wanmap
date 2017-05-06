@@ -88,6 +88,9 @@ def init_guest(ctx):
     guest.create()
     guest.start()
     time.sleep(3)
+    # Further steps to isolate the guest from any external network
+    guest.run('rm -f /etc/resolv.conf')     # Clear out unreachable resolvers
+    guest.run('systemctl mask NetworkManager firewalld')
 
 
 @task(init_guest)
@@ -131,10 +134,6 @@ def install_guest_virtualenv(ctx):
 @task(install_guest_mininet, install_guest_virtualenv)
 def configure_guest(ctx):
     guest = WANMapGuest(GUEST_NAME)
-    # Further steps to isolate the guest from any external network
-    # Override unreachable DNS resolvers copied by the Fedora template
-    guest.run('cp /dev/null /etc/resolv.conf')
-    guest.run('systemctl mask NetworkManager firewalld')
 
     # Setup rabbitmq and postgresql
     guest.run_args(
