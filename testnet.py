@@ -6,6 +6,7 @@ Create a network and inject scanner agents.
 from __future__ import print_function, unicode_literals
 
 from ipaddress import ip_interface
+from itertools import count
 import os
 import sys
 import time
@@ -37,6 +38,7 @@ class FakeWAN(object):
 
     def __init__(self):
         self._net = Mininet(switch=OVSBridge)
+        self._switch_id_sequence = count()
 
     def run(self, interactive):
         net = self._net
@@ -55,7 +57,7 @@ class FakeWAN(object):
             cls=ScannerNode, broker_url=EXTERNAL_BROKER_URL,
             ip='198.51.100.2/30')
 
-        switches = tuple(net.addSwitch('s{:d}'.format(n)) for n in range(3))
+        switches = tuple(self._new_switch() for _ in range(3))
         net.addLink(switches[0], dc_dist)
         net.addLink(switches[1], dmz_fw)
         net.addLink(switches[2], branch_dist)
@@ -117,6 +119,10 @@ class FakeWAN(object):
             net.interact()
         else:
             net.run(_block_indefinitely)
+
+    def _new_switch(self):
+        switch_id = 's{:d}'.format(next(self._switch_id_sequence))
+        return self._net.addSwitch(switch_id)
 
 
 class LinuxRouter(Node):
