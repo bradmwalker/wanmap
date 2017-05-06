@@ -136,7 +136,7 @@ class FakeWAN(object):
 
     def _new_switch(self, subnet):
         assert isinstance(subnet, IPv4Network)
-        switch_id = 's{:d}'.format(next(self._switch_id_sequence))
+        switch_id = b's{:d}'.format(next(self._switch_id_sequence))
         switch = self._net.addSwitch(switch_id)
         self._switches[subnet] = switch
         return switch
