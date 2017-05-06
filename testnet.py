@@ -5,7 +5,7 @@ Create a network and inject scanner agents.
 
 from __future__ import print_function, unicode_literals
 
-from ipaddress import ip_interface, IPv4Network
+from ipaddress import ip_network, IPv4Network
 from itertools import count
 import os
 import sys
@@ -44,26 +44,18 @@ class FakeWAN(object):
     def run(self, interactive):
         net = self._net
 
-        dc_gateway = ip_interface(u'10.1.0.1/24')
-        dc_switch = self._new_switch(dc_gateway.subnet)
-        dmz_gateway = ip_interface(u'203.0.113.1/24')
-        dmz_subnet = dmz_gateway.network
-        dmz_switch = self._new_switch(dmz_subnet)
-        branch_gateway = ip_interface(u'10.2.0.1/24')
-        branch_subnet = branch_gateway.network
-        branch_switch = self._new_switch(branch_subnet)
+        dc_subnet = ip_network(u'10.1.0.0/24')
+        dmz_subnet = ip_network(u'203.0.113.0/24')
+        branch_subnet = ip_network(u'10.2.0.0/24')
 
-        dc_dist = net.addHost('r0', cls=LinuxRouter, ip=str(dc_gateway))
-        dmz_fw = net.addHost('dmz', cls=LinuxRouter, ip=str(dmz_gateway))
-        branch_dist = net.addHost('r1', cls=LinuxRouter, ip=str(branch_gateway))
+        dc_dist = self.add_router('r0', dc_subnet)
+        dmz_fw = self.add_router('dmz', dmz_subnet)
+        branch_dist = self.add_router('r1', branch_subnet)
+
         external_scanner = net.addHost(
             'external',
             cls=ScannerNode, broker_url=EXTERNAL_BROKER_URL,
             ip='198.51.100.2/30')
-
-        net.addLink(dc_switch, dc_dist)
-        net.addLink(dmz_switch, dmz_fw)
-        net.addLink(branch_switch, branch_dist)
 
         dc_to_branch = TCLink(
             dc_dist, branch_dist,
@@ -99,29 +91,42 @@ class FakeWAN(object):
             'scanner1',
             cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='10.1.0.254/24', defaultRoute='via 10.1.0.1')
-        net.addLink(scanner1, dc_switch)
+        net.addLink(scanner1, self._switches[dc_subnet])
 
         dmz_scanner = net.addHost(
             'dmzscanner',
             cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='203.0.113.254/24', defaultRoute='via 203.0.113.1')
-        net.addLink(dmz_scanner, dmz_switch)
+        net.addLink(dmz_scanner, self._switches[dmz_subnet])
 
         scanner2 = net.addHost(
             'scanner2',
             cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='10.2.0.254/24', defaultRoute='via 10.2.0.1')
-        net.addLink(scanner2, branch_switch)
+        net.addLink(scanner2, self._switches[branch_subnet])
 
         console = net.addHost(
             'console', ip=CONSOLE_IP, defaultRoute='via 10.1.0.1',
             inNamespace=False)
-        net.addLink(console, dc_switch)
+        net.addLink(console, self._switches[dc_subnet])
 
         if interactive:
             net.interact()
         else:
             net.run(_block_indefinitely)
+
+    def add_router(self, name, subnet):
+        assert isinstance(subnet, IPv4Network)
+        router = LinuxRouter(name)
+        self._net.hosts.append(router)
+        self._net.nameToNode[name] = router
+
+        switch = self._new_switch(subnet)
+        gateway_address = '{}/{}'.format(next(subnet.hosts()), subnet.prefixlen)
+        gateway_link = Link(router, switch)
+        gateway_link.intf1.setIP(gateway_address)
+
+        return router
 
     def _new_switch(self, subnet):
         assert isinstance(subnet, IPv4Network)
