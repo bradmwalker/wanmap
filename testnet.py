@@ -44,10 +44,13 @@ class FakeWAN(object):
         net = self._net
 
         dc_gateway = ip_interface(u'10.1.0.1/24')
+        dc_switch = self._new_switch()
         dmz_gateway = ip_interface(u'203.0.113.1/24')
         dmz_subnet = dmz_gateway.network
+        dmz_switch = self._new_switch()
         branch_gateway = ip_interface(u'10.2.0.1/24')
         branch_subnet = branch_gateway.network
+        branch_switch = self._new_switch()
 
         dc_dist = net.addHost('r0', cls=LinuxRouter, ip=str(dc_gateway))
         dmz_fw = net.addHost('dmz', cls=LinuxRouter, ip=str(dmz_gateway))
@@ -57,10 +60,9 @@ class FakeWAN(object):
             cls=ScannerNode, broker_url=EXTERNAL_BROKER_URL,
             ip='198.51.100.2/30')
 
-        switches = tuple(self._new_switch() for _ in range(3))
-        net.addLink(switches[0], dc_dist)
-        net.addLink(switches[1], dmz_fw)
-        net.addLink(switches[2], branch_dist)
+        net.addLink(dc_switch, dc_dist)
+        net.addLink(dmz_switch, dmz_fw)
+        net.addLink(branch_switch, branch_dist)
 
         dc_to_branch = TCLink(
             dc_dist, branch_dist,
@@ -96,24 +98,24 @@ class FakeWAN(object):
             'scanner1',
             cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='10.1.0.254/24', defaultRoute='via 10.1.0.1')
-        net.addLink(scanner1, switches[0])
+        net.addLink(scanner1, dc_switch)
 
         dmz_scanner = net.addHost(
             'dmzscanner',
             cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='203.0.113.254/24', defaultRoute='via 203.0.113.1')
-        net.addLink(dmz_scanner, switches[1])
+        net.addLink(dmz_scanner, dmz_switch)
 
         scanner2 = net.addHost(
             'scanner2',
             cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
             ip='10.2.0.254/24', defaultRoute='via 10.2.0.1')
-        net.addLink(scanner2, switches[2])
+        net.addLink(scanner2, branch_switch)
 
         console = net.addHost(
             'console', ip=CONSOLE_IP, defaultRoute='via 10.1.0.1',
             inNamespace=False)
-        net.addLink(console, switches[0])
+        net.addLink(console, dc_switch)
 
         if interactive:
             net.interact()
