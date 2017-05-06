@@ -5,7 +5,7 @@ Create a network and inject scanner agents.
 
 from __future__ import print_function, unicode_literals
 
-from ipaddress import ip_network, IPv4Network
+from ipaddress import ip_interface, ip_network, IPv4Network
 from itertools import count
 import os
 import sys
@@ -87,23 +87,9 @@ class FakeWAN(object):
         dmz_fw.cmd('iptables -A FORWARD -d 10.1.0.10 -m tcp -p tcp --dport amqp --syn -j ACCEPT')
         dmz_fw.cmd('iptables -A FORWARD -j DROP')
 
-        scanner1 = net.addHost(
-            'scanner1',
-            cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
-            ip='10.1.0.254/24', defaultRoute='via 10.1.0.1')
-        net.addLink(scanner1, self._switches[dc_subnet])
-
-        dmz_scanner = net.addHost(
-            'dmzscanner',
-            cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
-            ip='203.0.113.254/24', defaultRoute='via 203.0.113.1')
-        net.addLink(dmz_scanner, self._switches[dmz_subnet])
-
-        scanner2 = net.addHost(
-            'scanner2',
-            cls=ScannerNode, broker_url=INTERNAL_BROKER_URL,
-            ip='10.2.0.254/24', defaultRoute='via 10.2.0.1')
-        net.addLink(scanner2, self._switches[branch_subnet])
+        self.add_scanner('scanner1', '10.1.0.254/24')
+        self.add_scanner('scanner2', '10.2.0.254/24')
+        self.add_scanner('dmzscanner', '203.0.113.254/24')
 
         console = net.addHost(
             'console', ip=CONSOLE_IP, defaultRoute='via 10.1.0.1',
@@ -127,6 +113,18 @@ class FakeWAN(object):
         gateway_link.intf1.setIP(gateway_address)
 
         return router
+
+    def add_scanner(self, name, ip_address, broker_url=None, **kwargs):
+        subnet = ip_interface(ip_address).network
+        gateway = next(subnet.hosts())
+
+        scanner = self._net.addHost(
+            name,
+            cls=ScannerNode, broker_url=broker_url or INTERNAL_BROKER_URL,
+            ip=ip_address, defaultRoute='via {}'.format(gateway),
+            **kwargs)
+        self._net.addLink(scanner, self._switches[subnet])
+        return scanner
 
     def _new_switch(self, subnet):
         assert isinstance(subnet, IPv4Network)
