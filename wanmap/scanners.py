@@ -1,13 +1,16 @@
-from ipaddress import ip_network
+from ipaddress import ip_interface, ip_network
 import logging
 
 import colander
 from deform import Form, ValidationFailure
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.view import view_config
+from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import relationship
 
-from .schema import Scanner, ScannerSubnet
-
+from .schema import Persistable
+from .util import intersect_network_sets
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +18,43 @@ logger = logging.getLogger(__name__)
 def includeme(config):
     config.add_route('show_scanners', '/scanners/')
     config.add_route('show_scanner', '/scanners/{name}/')
+
+
+class Scanner(Persistable):
+    """The distributed scanner celery instances"""
+
+    __tablename__ = 'scanners'
+    name = Column(String(64), primary_key=True)
+    interface = Column(postgresql.INET, nullable=False)
+
+    subnets = relationship('ScannerSubnet', backref='scanner')
+    subscans = relationship('Subscan', backref='scanner')
+
+    @classmethod
+    def create(cls, name, interface_address):
+        """Creates a scanner configured to scan its own subnet."""
+
+        scanner = cls(name=name, interface=interface_address)
+        subnet = str(ip_interface(interface_address).network)
+        scanner.subnets = [ScannerSubnet(scanner_name=name, subnet=subnet)]
+        return scanner
+
+    @property
+    def subnet_blocks(self):
+        return {ip_network(subnet.subnet) for subnet in self.subnets}
+
+    def intersect_scan_targets(self, scan_targets):
+        return intersect_network_sets(scan_targets, self.subnet_blocks)
+
+
+class ScannerSubnet(Persistable):
+    """The subnets managed by a scanner"""
+
+    __tablename__ = 'scanner_subnets'
+    scanner_name = Column(
+        String(64), ForeignKey('scanners.name'), primary_key=True)
+    # Should enforce partitioning of address space
+    subnet = Column(postgresql.CIDR, primary_key=True)
 
 
 @view_config(route_name='show_scanners', renderer='templates/scanners.jinja2')

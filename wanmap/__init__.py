@@ -2,7 +2,16 @@ import logging
 
 from pyramid.config import Configurator
 from pyramid.session import SignedCookieSessionFactory
+from sqlalchemy.orm import configure_mappers
 
+# Import persistable subclasses without cycles.
+from . import (     # noqa
+    deltascan, scans, splittingscan
+)
+
+# run configure_mappers after defining all of the models to ensure
+# all relationships can be setup
+configure_mappers()
 
 _logger = logging.getLogger(__name__)
 

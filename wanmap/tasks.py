@@ -11,7 +11,8 @@ from celery.utils.log import get_task_logger
 from pyramid.paster import get_appsettings, setup_logging
 from pyramid_transactional_celery import TransactionalTask
 
-from .schema import Scan, Scanner, Subscan
+from .scanners import Scanner
+from .scans import Scan, Subscan
 
 __all__ = ['scan_workflow']
 

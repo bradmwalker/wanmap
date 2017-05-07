@@ -1,3 +1,4 @@
+import enum
 from ipaddress import ip_network
 import logging
 import socket
@@ -8,9 +9,14 @@ from deform import widget
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.view import view_config
 
-from .schema import (
-    Scan, Scanner, ScannerSubnet,
+from sqlalchemy import (
+    Column, DateTime, ForeignKey, ForeignKeyConstraint, String
 )
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import relationship
+
+from .scanners import Scanner, ScannerSubnet
+from .schema import Persistable
 from .util import to_ip_network
 
 
@@ -35,6 +41,120 @@ def includeme(config):
     config.add_route('show_scan', '/scans/{id}/')
     config.add_route('new_splitting_scan', '/scans/new-splitting')
     config.add_route('new_delta_scan', '/scans/new-delta')
+
+
+# Maps to a form submission that could potentially run multiple scans on
+# multiple scanners
+class Scan(Persistable):
+    """Top-level construct for a user-submitted network scan task."""
+
+    @enum.unique
+    class States(enum.Enum):
+        """Possible overall states of an abstract scan."""
+        SCHEDULED = 1
+        PROGRESSING = 2
+        COMPLETED = 3
+
+    __tablename__ = 'scans'
+    id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    parameters = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+
+    targets = relationship('ScanTarget', backref='scan')
+    subscans = relationship('Subscan', backref='scan')
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'scan',
+        'polymorphic_on': 'type'
+    }
+
+    # TODO: Encapsulate Subscan status in Subscan class while implementing
+    # Scan cancellation.
+    @property
+    def status(self):
+        """The aggregate status of the Scan's subscans."""
+        if all(subscan.finished_at for subscan in self.subscans):
+            return Scan.States.COMPLETED
+        elif any(subscan.started_at for subscan in self.subscans):
+            return Scan.States.PROGRESSING
+        else:
+            return Scan.States.SCHEDULED
+
+
+class ScanTarget(Persistable):
+    """Scan task targets as initially specified."""
+
+    __tablename__ = 'scan_targets'
+    scan_id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+    net_block = Column(postgresql.INET, primary_key=True)
+    hostname = Column(String(255))
+    # Maps to multiple targets of one nmap instance
+
+    @classmethod
+    def from_fields(cls, targets):
+        return map(cls.from_field, targets)
+
+    @classmethod
+    def from_field(cls, target):
+        hostname, net_block = target, to_ip_network(target)
+        if hostname != net_block:
+            return cls(net_block=net_block, hostname=hostname)
+        else:
+            return cls(net_block=net_block)
+
+
+class Subscan(Persistable):
+    """
+    A scan subtask pinned to a distributed scanner.
+
+    The subtask may run as multiple nmap processes, particularly in the case of
+    both IPv4 and IPv6 targets.
+    """
+
+    __tablename__ = 'subscans'
+    scan_id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+    scanner_name = Column(
+        String(64), ForeignKey('scanners.name'), primary_key=True)
+    started_at = Column(DateTime(timezone=True))
+    finished_at = Column(DateTime(timezone=True))
+    xml_results = Column(String)
+
+    targets = relationship('SubscanTarget', backref='subscan')
+
+    @classmethod
+    def create(cls, scanner, targets):
+        subscan = cls(scanner=scanner)
+        targets = map(str, targets)
+        subscan.targets += [
+            SubscanTarget(target=target) for target in targets
+        ]
+        return subscan
+
+    # TODO: Make symmetric start method?
+    def complete(self, xml_results, duration):
+        self.xml_results = xml_results
+        self.started_at, self.finished_at = duration
+
+
+class SubscanTarget(Persistable):
+    """A target of a scan subtask, after pruning to scanner's subnets."""
+
+    __tablename__ = 'subscan_targets'
+    scan_id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
+    scanner_name = Column(String(64), primary_key=True)
+    target = Column(postgresql.INET, primary_key=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ('scan_id', 'scanner_name'),
+            ('subscans.scan_id', 'subscans.scanner_name'),
+        ),
+    )
 
 
 class ScanTargetNode(colander.SchemaNode):

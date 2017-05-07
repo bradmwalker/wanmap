@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from .schema import Scanner
+from .scanners import Scanner
 from .tasks import PersistenceTask
 
 

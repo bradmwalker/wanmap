@@ -1,11 +1,10 @@
 from deform import ValidationFailure
 import pytest
 
-from .deltascan import DeltaScanSchema
+from .deltascan import DeltaScan, DeltaScanSchema
 from .scans import (
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE, PING_SWEEP,
 )
-from .schema import DeltaScan
 
 
 def test_create_delta_scan(dbsession, fake_wan_scanners):

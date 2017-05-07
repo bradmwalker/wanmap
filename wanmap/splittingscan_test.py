@@ -3,9 +3,9 @@ import pytest
 
 from .scans import PING_SWEEP
 from .splittingscan import (
+    SplittingScan,
     SplittingScanSchema, NO_MAPPED_SUBNETS_ALERT_MESSAGE,
 )
-from .schema import SplittingScan
 
 
 def test_splitting_scan(dbsession, fake_wan_scanners):

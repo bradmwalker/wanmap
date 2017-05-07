@@ -8,8 +8,8 @@ from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
 
+from wanmap.scanners import Scanner
 import wanmap.schema
-from wanmap.schema import Scanner
 
 FAKE_DNS_MAP = {
     'wanmap.local': '10.1.0.10',

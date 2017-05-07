@@ -7,9 +7,9 @@ from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
 from .scans import (
-    show_scan, show_scans, PING_SWEEP,
+    Scan, show_scan, show_scans, PING_SWEEP,
 )
-from .schema import Scan, SplittingScan
+from .splittingscan import SplittingScan
 
 FAKE_SCAN_RESULT_XML = (
     '<?xml version="1.0" encoding="UTF-8"?>'

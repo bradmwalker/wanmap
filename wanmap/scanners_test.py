@@ -4,8 +4,7 @@ import logging
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
-from .scanners import show_scanner, show_scanners
-from .schema import Scanner
+from .scanners import Scanner, show_scanner, show_scanners
 
 logger = logging.getLogger(__name__)
 

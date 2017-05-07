@@ -1,19 +1,61 @@
+from ipaddress import ip_network
+from uuid import uuid4
+
+import arrow
 import colander
 from deform import Form, ValidationFailure
 from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy.dialects import postgresql
 import transaction
 
+from .scanners import Scanner, ScannerSubnet
 from .scans import (
+    Scan, ScanTarget, Subscan,
     ScanTargets, ScannerPair,
     get_scanner_names, get_scanner_subnets,
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
 )
-from .schema import DeltaScan
 from .tasks import scan_workflow
-# from .util import to_ip_network
+from .util import intersect_network_sets
 
 DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
+
+
+class DeltaScan(Scan):
+    __tablename__ = 'delta_scans'
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'delta'}
+
+    @classmethod
+    def create(cls, session, parameters, scanner_names, targets):
+        if not targets:
+            raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
+        scan.targets.extend(ScanTarget.from_fields(targets))
+        scannable_subnets = {
+            ip_network(subnet) for subnet,
+            in session.query(ScannerSubnet.subnet)
+        }
+        scan_targets = {
+            ip_network(target.net_block) for target in scan.targets
+        }
+        subscan_targets = intersect_network_sets(
+            scan_targets, scannable_subnets)
+
+        scanner_a = session.query(Scanner).get(scanner_names[0])
+        scanner_b = session.query(Scanner).get(scanner_names[1])
+
+        scan.subscans += [
+            Subscan.create(scanner_a, subscan_targets),
+            Subscan.create(scanner_b, subscan_targets),
+        ]
+        return scan
 
 
 class DeltaScanSchema(colander.Schema):
