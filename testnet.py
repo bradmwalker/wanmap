@@ -165,7 +165,7 @@ class ScannerNode(Node):
         ping_wait = "(until nping --tcp -p 5672 -c 1 {0} | grep ' SA '; do sleep .5; done)".format(broker_ip_address)
         cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
         cmd = cmd.format(CELERY_PATH, broker_url, self.name)
-        launch_celery = "runuser -c -u wanmap '{0}'".format(cmd)
+        launch_celery = "runuser --session-command -u wanmap '{0}'".format(cmd)
         self.cmd('echo', '; '.join((ping_wait, launch_celery,)))
         self.cmd('{} && {} &'.format(ping_wait, launch_celery))
 
