@@ -151,6 +151,7 @@ class LinuxRouter(Node):
 
     def terminate(self):
         self.cmd('sysctl net.ipv4.ip_forward=0')
+        self.cmd('jobs -p | xargs kill')
         super(LinuxRouter, self).terminate()
 
 
@@ -167,6 +168,10 @@ class ScannerNode(Node):
         launch_celery = "runuser -c -u wanmap '{0}'".format(cmd)
         self.cmd('echo', '; '.join((ping_wait, launch_celery,)))
         self.cmd('{} && {} &'.format(ping_wait, launch_celery))
+
+    def terminate(self):
+        self.cmd('jobs -p | xargs kill')
+        super(ScannerNode, self).terminate()
 
 
 def extract_ipv4_address(str_):
