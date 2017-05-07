@@ -120,7 +120,10 @@ def install_guest_virtualenv(ctx):
     guest = WANMapGuest(GUEST_NAME)
 
     # Wheels workaround setuptools_scm pip<9.0 naming issue
-    guest.run('adduser --system wanmap -m -d /opt/wanmap')
+    guest.run(
+        'adduser --system wanmap -m -d /opt/wanmap '
+        # password: wanmap
+        '-p $6$dig6uX2p$3Z.qutvJTYLINPtggcK2csBqXBuWDgJB2z4rRsvuX82R5zfWvbPM2.Ul.AATmWB5zOz06xph6oF1OZUjxdxLT1')
     guest.run('sudo -u wanmap pyvenv-3.5 /opt/wanmap')
     guest.run_with_host_net(
         'sudo -u wanmap '

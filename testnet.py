@@ -136,7 +136,7 @@ class FakeWAN(object):
 
     def _new_switch(self, subnet):
         assert isinstance(subnet, IPv4Network)
-        switch_id = 's{:d}'.format(next(self._switch_id_sequence))
+        switch_id = b's{:d}'.format(next(self._switch_id_sequence))
         switch = self._net.addSwitch(switch_id)
         self._switches[subnet] = switch
         return switch
@@ -145,12 +145,31 @@ class FakeWAN(object):
 class LinuxRouter(Node):
     "A Node with IP forwarding enabled."
 
+    def __init__(self, name):
+        privateDirs = ['/rw']
+        super(LinuxRouter, self).__init__(name, privateDirs=privateDirs)
+
     def config(self, **params):
         super(LinuxRouter, self).config(**params)
         self.cmd('sysctl net.ipv4.ip_forward=1')
+        self._initialize_ssh()
+        self.cmd('/usr/sbin/sshd -D &')
+
+    def _initialize_ssh(self):
+        """Generate sshd keys in an ephemeral directory inheriting the base
+        distro's sshd_config.
+        """
+
+        self.cmd('mkdir -p /rw/etc/ssh /rw/work')
+        self.cmd(
+            'mount -v -t overlay overlay '
+            '-o lowerdir=/etc/ssh,upperdir=/rw/etc/ssh,workdir=/rw/work '
+            '/etc/ssh')
+        self.cmd('/usr/sbin/sshd-keygen {}'.format(self.name))
 
     def terminate(self):
         self.cmd('sysctl net.ipv4.ip_forward=0')
+        self.cmd('jobs -p | xargs kill')
         super(LinuxRouter, self).terminate()
 
 
@@ -164,9 +183,13 @@ class ScannerNode(Node):
         ping_wait = "(until nping --tcp -p 5672 -c 1 {0} | grep ' SA '; do sleep .5; done)".format(broker_ip_address)
         cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
         cmd = cmd.format(CELERY_PATH, broker_url, self.name)
-        launch_celery = "runuser -c -u wanmap '{0}'".format(cmd)
+        launch_celery = "runuser --session-command -u wanmap '{0}'".format(cmd)
         self.cmd('echo', '; '.join((ping_wait, launch_celery,)))
         self.cmd('{} && {} &'.format(ping_wait, launch_celery))
+
+    def terminate(self):
+        self.cmd('jobs -p | xargs kill')
+        super(ScannerNode, self).terminate()
 
 
 def extract_ipv4_address(str_):
