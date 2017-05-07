@@ -169,10 +169,7 @@ def configure_guest(ctx):
         'cp /wanmap/config/wanmap-task-queue.service /etc/systemd/system')
     guest.run('systemctl daemon-reload')
 
-    # wanmap-fake-wan needs a delay after wanmap-console
-    guest.run('systemctl start wanmap-console')
-    time.sleep(15)
-    guest.run('systemctl start wanmap-fake-wan')
+    guest.run('systemctl start wanmap-console wanmap-fake-wan')
 
 
 @task
