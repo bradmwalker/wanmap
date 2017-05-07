@@ -145,9 +145,15 @@ def configure_guest(ctx):
          '-i', '/etc/rabbitmq/rabbitmq.config'])
     guest.run('postgresql-setup --initdb')
     guest.run('systemctl start postgresql')
+    guest.run('sudo -u postgres createuser -s wanmap')
+
+    # Setup wanmap test suite
+    guest.run('sudo -u wanmap createdb wanmap_test')
+    guest.run(
+        'sudo -u wanmap '
+        '/opt/wanmap/bin/initialize_wanmap_db /wanmap/test.ini')
 
     # Setup wanmap application
-    guest.run('sudo -u postgres createuser -s wanmap')
     guest.run('sudo -u wanmap createdb wanmap')
     guest.run(
         'sudo -u wanmap '
