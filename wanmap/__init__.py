@@ -7,7 +7,7 @@ from sqlalchemy.orm import configure_mappers
 from .schema import Persistable
 # Import persistable subclasses without cycles.
 from . import (     # noqa
-    deltascan, scans, splittingscan
+    deltascan, network, scans, splittingscan,
 )
 
 # run configure_mappers after defining all of the models to ensure
