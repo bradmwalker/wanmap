@@ -11,7 +11,7 @@ with open(os.path.join(here, 'CHANGES.md')) as f:
 requires = [
     'arrow',
     'celery',
-    'psycopg2',
+    'psycopg2>=2.7.0',  # register_ipaddress
     'pyramid_jinja2',
     'pyramid_tm',
     'waitress',
