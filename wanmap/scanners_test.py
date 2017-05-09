@@ -1,4 +1,3 @@
-import ipaddress
 import logging
 
 from pyramid.httpexceptions import HTTPNotFound
@@ -22,9 +21,7 @@ def persisted_scanner(dbsession, scanner):
 
 
 def test_scanner_has_connected_subnet(scanner):
-    network = ipaddress.ip_interface(scanner.interface).network
-    subnets = {subnet.subnet for subnet in scanner.subnets}
-    assert str(network) in subnets
+    assert scanner.interface.network in scanner.subnet_blocks
 
 
 def test_show_scanner_found(view_request, persisted_scanner):
