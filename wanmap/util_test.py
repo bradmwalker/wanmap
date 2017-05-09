@@ -1,5 +1,7 @@
 from ipaddress import ip_network, IPv4Network, IPv6Network
 
+import pytest
+
 from .util import intersect_networks, is_ip_network, to_ip_network
 
 
@@ -48,6 +50,11 @@ def test_hostname_to_ip_network(fake_dns):
     ip_network = to_ip_network(target)
     assert target != ip_network
     assert ip_network == IPv4Network('93.184.216.34')
+
+
+def test_unresolvable_raises_value_error(fake_dns):
+    with pytest.raises(ValueError):
+        to_ip_network('example.moc')
 
 
 def test_intersect_networks_nonoverlapping_v4():

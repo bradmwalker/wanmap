@@ -1,7 +1,6 @@
 import enum
 from ipaddress import ip_network
 import logging
-import socket
 import uuid
 
 import colander
@@ -164,8 +163,8 @@ class ScanTargetNode(colander.SchemaNode):
         subnets = self.bindings['subnets']
         try:
             target = to_ip_network(cstruct)
-        except socket.gaierror:
-            raise colander.Invalid(node, 'Unable to resolve hostname')
+        except ValueError as exc:
+            raise colander.Invalid(node, exc.args[0])
         if not does_target_match_subnets(target, subnets):
             raise colander.Invalid(
                 node, 'Must overlap a subnet assigned to a scanner')
