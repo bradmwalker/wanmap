@@ -4,6 +4,7 @@ from pyramid.config import Configurator
 from pyramid.session import SignedCookieSessionFactory
 from sqlalchemy.orm import configure_mappers
 
+from .schema import Persistable
 # Import persistable subclasses without cycles.
 from . import (     # noqa
     deltascan, scans, splittingscan
@@ -18,6 +19,11 @@ _logger = logging.getLogger(__name__)
 
 def setup_shell(env):
     env['dbsession'] = env['request'].dbsession
+    env.update({
+        name: class_ for name, class_
+        in Persistable._decl_class_registry.items()
+        if name != '_sa_module_registry'
+    })
 
 
 def main(global_config, **settings):
