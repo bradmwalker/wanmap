@@ -1,5 +1,6 @@
 import logging
 
+from psycopg2.extras import register_ipaddress
 from sqlalchemy import engine_from_config
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -19,6 +20,9 @@ NAMING_CONVENTION = {
 
 
 _logger = logging.getLogger(__name__)
+
+# Translate INET/CIDR to IPv4Interface/IPv4Network
+register_ipaddress()
 
 metadata = MetaData(naming_convention=NAMING_CONVENTION)
 Persistable = declarative_base(metadata=metadata)

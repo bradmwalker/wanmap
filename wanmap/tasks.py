@@ -61,7 +61,8 @@ def scan_workflow(self, scan_id):
     scan = self.dbsession.query(Scan).get(scan_id)
     nmap_options = scan.parameters.split(' ')
     for subscan in scan.subscans:
-        subscan_targets = [target.target for target in subscan.targets]
+        # TODO: Serialize ipaddress types?
+        subscan_targets = [str(target.target) for target in subscan.targets]
         scanner_name = subscan.scanner.name
         subscan_key = (scan_id, scanner_name)
         exec_nmap_scan.delay(subscan_key, nmap_options, subscan_targets)
