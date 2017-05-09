@@ -1,6 +1,4 @@
 from uuid import uuid4
-from ipaddress import ip_network
-# import socket
 
 import arrow
 import colander
@@ -38,9 +36,7 @@ class SplittingScan(Scan):
         scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
         scanners = session.query(Scanner).options(joinedload('subnets'))
-        scan_targets = {
-            ip_network(target.net_block) for target in scan.targets
-        }
+        scan_targets = {target.net_block for target in scan.targets}
 
         scanners_and_matching_targets = {
             scanner: scanner.intersect_scan_targets(scan_targets)

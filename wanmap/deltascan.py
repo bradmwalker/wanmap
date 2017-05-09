@@ -1,4 +1,3 @@
-from ipaddress import ip_network
 from uuid import uuid4
 
 import arrow
@@ -39,12 +38,9 @@ class DeltaScan(Scan):
         scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
         scannable_subnets = {
-            ip_network(subnet) for subnet,
-            in session.query(ScannerSubnet.subnet)
+            subnet for subnet, in session.query(ScannerSubnet.subnet)
         }
-        scan_targets = {
-            ip_network(target.net_block) for target in scan.targets
-        }
+        scan_targets = {target.net_block for target in scan.targets}
         subscan_targets = intersect_network_sets(
             scan_targets, scannable_subnets)
 
