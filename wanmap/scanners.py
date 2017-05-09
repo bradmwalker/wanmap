@@ -27,21 +27,22 @@ class Scanner(Persistable):
     name = Column(String(64), primary_key=True)
     interface = Column(postgresql.INET, nullable=False)
 
-    subnets = relationship('ScannerSubnet', backref='scanner')
+    subnets = relationship(
+        'ScannerSubnet', cascade='all, delete-orphan', backref='scanner')
     subscans = relationship('Subscan', backref='scanner')
 
     @classmethod
     def create(cls, name, interface_address):
         """Creates a scanner configured to scan its own subnet."""
 
-        scanner = cls(name=name, interface=interface_address)
-        subnet = str(ip_interface(interface_address).network)
-        scanner.subnets = [ScannerSubnet(scanner_name=name, subnet=subnet)]
+        interface = ip_interface(interface_address)
+        subnets = [ScannerSubnet(scanner_name=name, subnet=interface.network)]
+        scanner = cls(name=name, interface=interface, subnets=subnets)
         return scanner
 
     @property
     def subnet_blocks(self):
-        return {ip_network(subnet.subnet) for subnet in self.subnets}
+        return {subnet.subnet for subnet in self.subnets}
 
     def intersect_scan_targets(self, scan_targets):
         return intersect_network_sets(scan_targets, self.subnet_blocks)
@@ -88,8 +89,8 @@ def show_scanner(request):
     if not scanner:
         raise HTTPNotFound
     scanner_pstruct = {
-        'name': scanner.name, 'interface': scanner.interface,
-        'subnets': [subnet.subnet for subnet in scanner.subnets]
+        'name': scanner.name, 'interface': str(scanner.interface),
+        'subnets': [str(subnet.subnet) for subnet in scanner.subnets]
     }
     scanner_schema = ScannerSchema()
     form = Form(scanner_schema, formid='edit-scanner', buttons=('Edit',))
@@ -116,14 +117,15 @@ def edit_scanner(request):
     except ValidationFailure as e:
         return {'scanner': scanner, 'scanner_form': e.render()}
 
-    existing_subnets = set(scanner.subnets)
-    proposed_subnets = {
-        ScannerSubnet(scanner=scanner, subnet=subnet)
-        for subnet in appstruct['subnets']
-    }
-    for subnet in existing_subnets - proposed_subnets:
-        request.dbsession.delete(subnet)
-    for subnet in proposed_subnets:
-        request.dbsession.merge(subnet)
-    request.dbsession.merge(scanner)
+    existing_subnets = scanner.subnet_blocks
+    proposed_subnets = set(map(ip_network, appstruct['subnets']))
+    removed_subnets = existing_subnets - proposed_subnets
+
+    for subnet in scanner.subnets:
+        if subnet.subnet in removed_subnets:
+            scanner.subnets.remove(subnet)
+
+    for subnet in proposed_subnets - existing_subnets:
+        scanner.subnets.append(ScannerSubnet(scanner=scanner, subnet=subnet))
+    request.dbsession.flush()
     return {'scanner': scanner, 'scanner_form': scanner_form.render()}

@@ -17,11 +17,13 @@ def is_ip_network(str_):
 
 def to_ip_network(str_):
     "Currently doesn't attempt resolving AAAA records to IPv6 addresses."
+    if is_ip_network(str_):
+        return ip_network(str_)
     try:
-        ip_network(str_)
-        return str_
-    except ValueError:
-        return socket.gethostbyname(str_)
+        str_ = socket.gethostbyname(str_)
+        return ip_network(str_)
+    except socket.gaierror as exc:
+        raise ValueError('Unable to resolve hostname') from exc
 
 
 def intersect_network_sets(nets_a, nets_b):

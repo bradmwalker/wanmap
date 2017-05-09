@@ -1,4 +1,6 @@
-from ipaddress import ip_network
+from ipaddress import ip_network, IPv4Network, IPv6Network
+
+import pytest
 
 from .util import intersect_networks, is_ip_network, to_ip_network
 
@@ -25,29 +27,34 @@ def test_hostname_is_not_ip_network():
 
 def test_ipv4_address_to_ip_network():
     target = '10.0.0.1'
-    assert target == to_ip_network(target)
+    assert IPv4Network(target) == to_ip_network(target)
 
 
 def test_ipv4_network_to_ip_network():
     target = '10.0.0.0/8'
-    assert target == to_ip_network(target)
+    assert IPv4Network(target) == to_ip_network(target)
 
 
 def test_ipv6_address_to_ip_network():
     target = 'fd12:3456:789a:1::1'
-    assert target == to_ip_network(target)
+    assert IPv6Network(target) == to_ip_network(target)
 
 
 def test_ipv6_network_to_ip_network():
     target = 'fd12:3456:789a:1::/64'
-    assert target == to_ip_network(target)
+    assert IPv6Network(target) == to_ip_network(target)
 
 
 def test_hostname_to_ip_network(fake_dns):
     target = 'example.com'
     ip_network = to_ip_network(target)
     assert target != ip_network
-    assert ip_network == '93.184.216.34'
+    assert ip_network == IPv4Network('93.184.216.34')
+
+
+def test_unresolvable_raises_value_error(fake_dns):
+    with pytest.raises(ValueError):
+        to_ip_network('example.moc')
 
 
 def test_intersect_networks_nonoverlapping_v4():
