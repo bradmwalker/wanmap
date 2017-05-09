@@ -88,7 +88,7 @@ class ScanTarget(Persistable):
     scan_id = Column(
         postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
         primary_key=True)
-    net_block = Column(postgresql.INET, primary_key=True)
+    net_block = Column(postgresql.CIDR, primary_key=True)
     hostname = Column(String(255))
     # Maps to multiple targets of one nmap instance
 
@@ -146,7 +146,7 @@ class SubscanTarget(Persistable):
     __tablename__ = 'subscan_targets'
     scan_id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
     scanner_name = Column(String(64), primary_key=True)
-    target = Column(postgresql.INET, primary_key=True)
+    target = Column(postgresql.CIDR, primary_key=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
