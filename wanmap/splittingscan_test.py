@@ -117,6 +117,48 @@ def test_splitting_scan_form_does_not_allow_unresolvable(
     assert 'Unable to resolve hostname' in exc.value.render()
 
 
+def test_splitting_scan_subnets_allows_non_overlapping_targets(
+    splitting_scan_form, fake_dns):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ['10.0.0.0/8', 'fd12:3456:789a:1::/64'],
+    }
+    splitting_scan_form.validate_pstruct(appstruct)
+
+
+def test_splitting_scan_subnets_restricts_overlapping_targets(
+    splitting_scan_form, fake_dns):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scan_targets': ['10.0.0.0/8', '10.1.0.0/24'],
+        }
+        splitting_scan_form.validate_pstruct(appstruct)
+    assert 'Target cannot overlap' in exc.value.render()
+
+
+def test_splitting_scan_subnets_restricts_multiple_overlapping_targets(
+    splitting_scan_form, fake_dns):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scan_targets': ['10.0.0.0/8', '10.1.0.0/24', '10.1.0.1'],
+        }
+        splitting_scan_form.validate_pstruct(appstruct)
+    assert exc.value.render().count('Target cannot overlap') == 3
+
+
+def test_splitting_scan_subnets_restricts_overlapping_host(
+    splitting_scan_form, fake_dns):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scan_targets': ['10.0.0.0/8', 'wanmap.local'],
+        }
+        splitting_scan_form.validate_pstruct(appstruct)
+    assert 'Target cannot overlap' in exc.value.render()
+
+
 @pytest.mark.parametrize('method', ('GET', 'POST'))
 def test_new_splitting_scan_without_subnets_has_no_form(
     monkeypatch, fresh_app, method):
