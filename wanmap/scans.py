@@ -1,5 +1,6 @@
 import enum
 from ipaddress import ip_network
+from itertools import combinations
 import logging
 import uuid
 
@@ -172,8 +173,37 @@ class ScanTargetNode(colander.SchemaNode):
 
 class ScanTargets(colander.SequenceSchema):
     scan_target = ScanTargetNode()
-    validator = colander.Length(
-        min=1, min_err='Must submit at least one Scan Target')
+
+    def validator(self, node, cstruct):
+        targets = cstruct
+        if not targets:
+            raise colander.Invalid(
+                node, 'Must submit at least one Scan Target')
+        resolved_targets = tuple(map(to_ip_network, targets))
+        overlapping_target_indices = self._collect_overlapping_targets(
+            resolved_targets)
+        if overlapping_target_indices:
+            self._raise_overlapping_exception(
+                node, overlapping_target_indices)
+
+    def _collect_overlapping_targets(self, targets):
+        indexed_targets = enumerate(targets)
+        target_pairs = combinations(indexed_targets, 2)
+        overlapping_indices = set()
+        for (index_a, target_a), (index_b, target_b) in target_pairs:
+            if target_a.overlaps(target_b):
+                overlapping_indices |= {index_a, index_b}
+        return overlapping_indices
+
+    def _raise_overlapping_exception(self, node, overlapping_indices):
+        exc = colander.Invalid(node)
+        scan_target_node = node.children[0]
+        for index in overlapping_indices:
+            sub_exc = colander.Invalid(
+                scan_target_node,
+                'Target cannot overlap other targets')
+            exc.add(sub_exc, pos=index)
+        raise exc
 
 
 def get_scanner_names(dbsession):
