@@ -39,6 +39,7 @@ def make_wsgi_app(settings):
     config.set_session_factory(session_factory)
     config.include('.schema')
     config.include('.console')
+    config.include('.network')
     config.include('.scans')
     config.include('.scanners')
 

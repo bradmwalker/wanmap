@@ -6,14 +6,29 @@ from uuid import UUID
 
 import arrow
 import paramiko
+from pyramid.view import view_config
 from sqlalchemy import Column, DateTime, ForeignKey
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import joinedload, relationship
 
 from .schema import Persistable
 from .util import opposite_address
 
 logger = logging.getLogger(__name__)
+
+
+def includeme(config):
+    config.add_route('show_network', '/network')
+
+
+@view_config(route_name='show_network', renderer='templates/network.jinja2')
+def show_network(request):
+    routers = (
+        request.dbsession.query(Router).
+        options(joinedload('_interfaces')).
+        order_by(Router.id).
+        all())
+    return {'routers': routers}
 
 
 class Router(Persistable):

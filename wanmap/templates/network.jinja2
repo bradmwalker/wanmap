@@ -1,0 +1,19 @@
+{% extends "layout.jinja2" %}
+{% block content %}
+{% if routers %}
+<div class="row">
+  <h4>Routers</h4>
+  <table class="table">
+      <thead><tr><th>ID</th><th>Interfaces</th></thead>
+      <tbody>
+    {% for router in routers %}
+        <tr>
+          <td class="uuid">{{ router.id }}</td>
+          <td>{% for interface in router.interfaces %}{{ interface }} {% endfor %}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock content %}

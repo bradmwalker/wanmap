@@ -15,3 +15,6 @@ h6 {
 p {
   font-weight: 300;
 }
+.uuid {
+  white-space: nowrap;
+}
