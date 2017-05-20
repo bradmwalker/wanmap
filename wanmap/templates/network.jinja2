@@ -1,19 +1,39 @@
 {% extends "layout.jinja2" %}
 {% block content %}
-{% if routers %}
 <div class="row">
-  <h4>Routers</h4>
-  <table class="table">
-      <thead><tr><th>ID</th><th>Interfaces</th></thead>
-      <tbody>
-    {% for router in routers %}
-        <tr>
-          <td class="uuid">{{ router.id }}</td>
-          <td>{% for interface in router.interfaces %}{{ interface }} {% endfor %}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  <ul class="nav nav-tabs" role="tablist">
+    {% if routers %}
+    <li role="presentation" {% if not discovery_invalid %}class="active"){% endif %}>
+      <a id="routers-tab" href="#routers-pane" aria-controls="routers" role="tab" data-toggle="tab">Routers</a>
+    </li>
+    {% endif %}
+    <li role="presentation" {% if not routers or discovery_invalid %}class="active"{% endif %}>
+      <a id="discovery-tab" href="#discovery-pane" aria-controls="discovery" role="tab" data-toggle="tab">Discovery</a>
+    </li>
+  </ul>
+  <div class="tab-content">
+    {% if routers %}
+    <div role="tabpanel" {% if not discovery_invalid %}class="tab-pane active"{% else %}class="tab-pane"{% endif %} id="routers-pane">
+      <table class="table">
+          <thead><tr><th>ID</th><th>Last Collected</th><th>Interfaces</th></thead>
+          <tbody>
+          {% for router in routers %}
+              <tr>
+              <td class="uuid">{{ router.id }}</td>
+              <td>{{ router.last_collected_at }}</td>
+              <td>{% for interface in router.interfaces %}{{ interface }} {% endfor %}</td>
+              </tr>
+          {% endfor %}
+          </tbody>
+      </table>
+    </div>
+    {% endif %}
+    <div role="tabpanel" {% if not routers or discovery_invalid %}class="tab-pane active"{% else %}class="tab-pane"{% endif %} id="discovery-pane">
+      <div class="panel panel-primary">
+        <div class="panel-heading"><h3 class="panel-title">Discover Network</h3></div>
+        <div class="panel-body">{{ discovery_form|safe }}</div>
+      </div>
+    </div>
+  </div>
 </div>
-{% endif %}
 {% endblock content %}

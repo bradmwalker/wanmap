@@ -1,5 +1,5 @@
 from collections import deque
-from ipaddress import ip_interface
+from ipaddress import ip_address, ip_interface
 import logging
 import re
 from uuid import UUID
@@ -7,11 +7,14 @@ from uuid import UUID
 import arrow
 import colander
 from deform import Form, ValidationFailure
+from deform.widget import PasswordWidget
 import paramiko
+from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
 from sqlalchemy import Column, DateTime, ForeignKey
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import joinedload, relationship
+import transaction
 
 from .schema import Persistable
 from .util import opposite_address
@@ -23,14 +26,55 @@ def includeme(config):
     config.add_route('show_network', '/network')
 
 
-@view_config(route_name='show_network', renderer='templates/network.jinja2')
-def show_network(request):
+@view_config(
+    route_name='show_network', request_method='GET',
+    renderer='templates/network.jinja2')
+def get_network(request):
+    discovery_form = DiscoveryValidator.form()
+    discovery_form = discovery_form.render()
     routers = (
         request.dbsession.query(Router).
         options(joinedload('_interfaces')).
         order_by(Router.id).
         all())
-    return {'routers': routers}
+    return {
+        'discovery_invalid': False,
+        'discovery_form': discovery_form,
+        'routers': routers,
+    }
+
+
+@view_config(
+    route_name='show_network', request_method='POST',
+    renderer='templates/network.jinja2')
+def post_network_update(request):
+    discovery_form = DiscoveryValidator.form()
+    controls = request.POST.items()
+    try:
+        appstruct = discovery_form.validate(controls)
+    except ValidationFailure as e:
+        discovery_form = e.render()
+        routers = (
+            request.dbsession.query(Router).
+            options(joinedload('_interfaces')).
+            order_by(Router.id).
+            all())
+        return {
+            'discovery_invalid': True,
+            'discovery_form': discovery_form,
+            'routers': routers,
+        }
+
+    # Resolve IP address
+    seed_router_address = ip_address(appstruct['seed_router_host'])
+    credentials = (appstruct['username'], appstruct['password'])
+    with transaction.manager:
+        routers = discover_network(seed_router_address, credentials)
+        for router in routers:
+            request.dbsession.merge(router)
+
+    network_redirect = request.route_url('show_network')
+    return HTTPFound(location=network_redirect)
 
 
 class Router(Persistable):
@@ -76,7 +120,8 @@ class DiscoveryValidator(colander.Schema):
     username = colander.SchemaNode(
         colander.String(), validator=colander.Length(max=32))
     password = colander.SchemaNode(
-        colander.String(), validator=colander.Length(max=32))
+        colander.String(), validator=colander.Length(max=32),
+        widget=PasswordWidget())
 
     @classmethod
     def form(cls):
