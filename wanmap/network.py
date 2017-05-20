@@ -5,6 +5,8 @@ import re
 from uuid import UUID
 
 import arrow
+import colander
+from deform import Form, ValidationFailure
 import paramiko
 from pyramid.view import view_config
 from sqlalchemy import Column, DateTime, ForeignKey
@@ -66,6 +68,20 @@ class RouterInterface(Persistable):
         postgresql.UUID(as_uuid=True), ForeignKey('routers.id'),
         primary_key=True)
     address = Column(postgresql.INET, primary_key=True)
+
+
+class DiscoveryValidator(colander.Schema):
+    seed_router_host = colander.SchemaNode(
+        colander.String(), title='Seed Router IP Address')
+    username = colander.SchemaNode(
+        colander.String(), validator=colander.Length(max=32))
+    password = colander.SchemaNode(
+        colander.String(), validator=colander.Length(max=32))
+
+    @classmethod
+    def form(cls):
+        schema = cls()
+        return Form(schema, formid='discover-network', buttons=('submit',))
 
 
 def discover_network(seed_router_address, credentials):
