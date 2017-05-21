@@ -7,7 +7,7 @@ from sqlalchemy.orm import configure_mappers
 from .schema import Persistable
 # Import persistable subclasses without cycles.
 from . import (     # noqa
-    deltascan, scans, splittingscan
+    deltascan, network, scans, splittingscan,
 )
 
 # run configure_mappers after defining all of the models to ensure
@@ -39,6 +39,7 @@ def make_wsgi_app(settings):
     config.set_session_factory(session_factory)
     config.include('.schema')
     config.include('.console')
+    config.include('.network')
     config.include('.scans')
     config.include('.scanners')
 

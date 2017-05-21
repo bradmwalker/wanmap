@@ -1,8 +1,12 @@
-from ipaddress import ip_network, IPv4Network, IPv6Network
+from ipaddress import (
+    ip_address, ip_interface, ip_network, IPv4Network, IPv6Network,
+)
 
 import pytest
 
-from .util import intersect_networks, is_ip_network, to_ip_network
+from .util import (
+    intersect_networks, is_ip_network, opposite_address, to_ip_network,
+)
 
 
 def test_ipv4_address_is_ip_network():
@@ -87,3 +91,16 @@ def test_intersect_networks_overlapping_host_net_v4():
     net_a = ip_network('10.0.0.0/8')
     net_b = ip_network('10.10.10.10/32')
     assert intersect_networks(net_a, net_b) == net_b
+
+
+# TODO: Cover IPv6
+def test_opposite_address_when_odd_ipv4_host():
+    side_a = ip_interface('192.168.0.1/30')
+    side_b = ip_address('192.168.0.2')
+    assert opposite_address(side_a) == side_b
+
+
+def test_opposite_address_when_even_ipv4_host():
+    side_a = ip_address('192.168.0.1')
+    side_b = ip_interface('192.168.0.2/30')
+    assert opposite_address(side_b) == side_a

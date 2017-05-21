@@ -5,6 +5,35 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 
 PING_SWEEP = '-sn -PE -n'
+FAKE_WAN_ROUTER_COUNT = 3
+
+
+def test_network_discovery(base_url, selenium):
+    selenium.implicitly_wait(3)
+    selenium.get(base_url)
+
+    network_link = selenium.find_element_by_id('show-network')
+    network_link.click()
+
+    discovery_tab_link = selenium.find_element_by_id('discovery-tab')
+    discovery_tab_link.click()
+
+    seed_router_host = selenium.find_element_by_name('seed_router_host')
+    seed_router_host.send_keys('10.1.0.1')
+    username = selenium.find_element_by_name('username')
+    username.send_keys('wanmap')
+    password = selenium.find_element_by_name('password')
+    password.send_keys('wanmap')
+    password.send_keys(Keys.ENTER)
+
+    time.sleep(5)
+    routers_tab = selenium.find_element_by_id('routers-tab')
+    routers_tab.click()
+
+    # TODO: Assert routers updated, not just added.
+    routers_pane = selenium.find_element_by_id('routers-pane')
+    router_rows = routers_pane.find_elements_by_css_selector('tbody > tr')
+    assert len(router_rows) == FAKE_WAN_ROUTER_COUNT
 
 
 @pytest.mark.nondestructive

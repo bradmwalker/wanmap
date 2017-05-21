@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import time
+from uuid import UUID
 
 from mininet.log import setLogLevel
 from mininet.net import Mininet
@@ -25,6 +26,13 @@ INTERNET_IP = '192.0.2.1'
 EXTERNAL_SCANNER_IP = '198.51.100.2'
 EXTERNAL_BROKER_URL = 'amqp://guest@192.0.2.1/'
 DMZ_BLOCK = u'203.0.113.0/24'
+
+ROUTER_UUIDS = {
+    'r0': UUID('35c1bb78-bbe4-43cc-a50c-5af77c0a8af6'),
+    'r1': UUID('7a406613-2162-4a00-8dbb-40f88b90021a'),
+    'dmz': UUID('a2564094-5973-4d43-9a89-2fcd86d972e0'),
+}
+ROUTER_UUID_PATH = '/etc/ssh/uuid'
 
 
 def main():
@@ -147,12 +155,14 @@ class LinuxRouter(Node):
 
     def __init__(self, name):
         privateDirs = ['/rw']
+        self._uuid = ROUTER_UUIDS[name]
         super(LinuxRouter, self).__init__(name, privateDirs=privateDirs)
 
     def config(self, **params):
         super(LinuxRouter, self).config(**params)
         self.cmd('sysctl net.ipv4.ip_forward=1')
         self._initialize_ssh()
+        self.cmd('echo {} > {}'.format(self._uuid, ROUTER_UUID_PATH))
         self.cmd('/usr/sbin/sshd -D &')
 
     def _initialize_ssh(self):

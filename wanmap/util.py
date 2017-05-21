@@ -1,10 +1,13 @@
-from ipaddress import ip_network
+from ipaddress import ip_address, ip_network
 from itertools import product, starmap
 from operator import attrgetter
 import socket
 
 
-__all__ = ['is_ip_network', 'to_ip_network']
+__all__ = [
+    'is_ip_network', 'to_ip_network', 'intersect_network_sets',
+    'intersect_networks', 'opposite_address',
+]
 
 
 def is_ip_network(str_):
@@ -38,3 +41,9 @@ def intersect_network_sets(nets_a, nets_b):
 def intersect_networks(net_a, net_b):
     if net_a.overlaps(net_b):
         return max(net_a, net_b, key=attrgetter('prefixlen'))
+
+
+def opposite_address(interface):
+    assert interface.network.prefixlen == 30
+    first, second = interface.network.hosts()
+    return first if interface.ip == second else second
