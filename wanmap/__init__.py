@@ -42,6 +42,5 @@ def make_wsgi_app(settings):
     config.include('.network')
     config.include('.scans')
     config.include('.scanners')
-
-    config.scan(ignore='wanmap.tests')
+    config.scan()
     return config.make_wsgi_app()
