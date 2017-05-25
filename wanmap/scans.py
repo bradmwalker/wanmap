@@ -59,14 +59,14 @@ class Scan(Persistable):
     id = Column(postgresql.UUID(as_uuid=True), primary_key=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     parameters = Column(String, nullable=False)
-    type = Column(String, nullable=False)
+    _type = Column('type', String, nullable=False)
 
     targets = relationship('ScanTarget', backref='scan')
     subscans = relationship('Subscan', backref='scan')
 
     __mapper_args__ = {
         'polymorphic_identity': 'scan',
-        'polymorphic_on': 'type'
+        'polymorphic_on': '_type'
     }
 
     # TODO: Encapsulate Subscan status in Subscan class while implementing

@@ -12,7 +12,8 @@
       <tr>
         <td><a href="{{ request.route_url('show_scan', id=scan.id)  }}">{{ scan.id }}</a></td>
         <td>{{ scan.created_at }}</td>
-        <td>{{ scan.type }}</td>
+        {# Scan type should be transparent? #}
+        <td>{{ scan._type }}</td>
         <td>{{ scan.parameters }}</td>
       </tr>
     {% endfor %}
