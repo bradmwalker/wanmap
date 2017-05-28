@@ -14,11 +14,17 @@ from .scans import (
     Scan, ScanTarget, Subscan,
     ScanTargets, ScannerPair,
     get_scanner_names, get_scannable_subnets,
-    NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
 from .util import intersect_network_sets
 
+
+NO_SCANNERS_ALERT_MESSAGE = (
+    'There are no available scanners. Start two or more scanners to enable '
+    'Delta Scan.')
+ONLY_ONE_SCANNER_ALERT_MESSAGE = (
+    'There is only one available scanner. Start two or more scanners to '
+    'enable Delta Scan.')
 DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
 
 
