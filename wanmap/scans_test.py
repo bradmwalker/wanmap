@@ -1,3 +1,4 @@
+from ipaddress import ip_network
 import logging
 import uuid
 
@@ -7,7 +8,7 @@ from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
 from .scans import (
-    Scan, show_scan, show_scans, PING_SWEEP,
+    get_scannable_subnets, Scan, show_scan, show_scans, PING_SWEEP,
 )
 from .splittingscan import SplittingScan
 
@@ -116,3 +117,7 @@ def test_subscan_complete_sets_xml_result(subscan):
     finished_at = started_at + timedelta(seconds=1)
     subscan.complete(FAKE_SCAN_RESULT_XML, (started_at, finished_at))
     assert len(subscan.xml_results)
+
+
+def test_get_scannable_subnets_includes_glue_nets(dbsession, fake_wan_routers):
+    assert ip_network('192.168.0.0/30') in get_scannable_subnets(dbsession)
