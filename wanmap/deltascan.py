@@ -14,6 +14,7 @@ from .scans import (
     Scan, ScanTarget, Subscan,
     ScanTargets, ScannerPair,
     get_scanner_names, get_scannable_subnets,
+    NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
 from .util import intersect_network_sets
@@ -73,12 +74,14 @@ class DeltaScanSchema(colander.Schema):
     route_name='new_delta_scan', request_method='GET',
     renderer='templates/new-scan.jinja2')
 def get_new_delta_scan(request):
+    subnets = get_scannable_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
     scanner_names = get_scanner_names(request.dbsession)
     if not scanner_names:
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     elif len(scanner_names) == 1:
         return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    subnets = get_scannable_subnets(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names, subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
@@ -88,12 +91,14 @@ def get_new_delta_scan(request):
     route_name='new_delta_scan', request_method='POST',
     renderer='templates/new-scan.jinja2')
 def post_new_delta_scan(request):
+    subnets = get_scannable_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
     scanner_names = get_scanner_names(request.dbsession)
     if not scanner_names:
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     elif len(scanner_names) == 1:
         return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    subnets = get_scannable_subnets(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names, subnets)
     controls = request.POST.items()
     try:
