@@ -1,7 +1,6 @@
 from ipaddress import ip_interface
 import logging
 
-from pyramid.httpexceptions import HTTPNotFound
 from pyramid.view import view_config
 from sqlalchemy import Column, String
 from sqlalchemy.dialects import postgresql
@@ -14,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 def includeme(config):
     config.add_route('show_scanners', '/scanners/')
-    config.add_route('show_scanner', '/scanners/{name}/')
 
 
 class Scanner(Persistable):
@@ -37,14 +35,3 @@ class Scanner(Persistable):
 def show_scanners(request):
     scanners = request.dbsession.query(Scanner).order_by(Scanner.name).all()
     return {'scanners': scanners}
-
-
-@view_config(
-    route_name='show_scanner', request_method='GET',
-    renderer='templates/scanner.jinja2')
-def show_scanner(request):
-    name = request.matchdict['name']
-    scanner = request.dbsession.query(Scanner).get(name)
-    if not scanner:
-        raise HTTPNotFound
-    return {'scanner': scanner}
