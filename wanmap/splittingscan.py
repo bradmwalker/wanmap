@@ -1,3 +1,4 @@
+from itertools import product
 from uuid import uuid4
 
 import arrow
@@ -10,13 +11,19 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import joinedload
 import transaction
 
+from .network import Router
 from .scanners import Scanner
 from .scans import (
-    get_scanner_subnets, Scan, ScanTarget, ScanTargets, Subscan,
-    NO_MAPPED_SUBNETS_ALERT_MESSAGE,
+    get_scanner_names, get_scannable_subnets,
+    Scan, ScanTarget, ScanTargets, Subscan,
+    NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
 
+
+NO_SCANNERS_ALERT_MESSAGE = (
+    'There are no available scanners. Start one or more scanners to enable '
+    'Splitting Scan.')
 SPLITTING_SCAN_FORM_TITLE = 'Splitting Network Scan'
 
 
@@ -35,21 +42,28 @@ class SplittingScan(Scan):
         created_at = arrow.now().datetime
         scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
-        scanners = session.query(Scanner).options(joinedload('subnets'))
         scan_targets = {target.net_block for target in scan.targets}
-
-        scanners_and_matching_targets = {
-            scanner: scanner.intersect_scan_targets(scan_targets)
-            for scanner in scanners
+        scanners = session.query(Scanner).all()
+        routers = (
+            session.query(Router).
+            options(joinedload('_interfaces')).all())
+        router_scanner_map = {
+            router: scanner for router, scanner in product(routers, scanners)
+            if router.is_scanner_link_local(scanner)
         }
 
-        if not any(scanners_and_matching_targets.values()):
-            raise Exception('No scanners have matching subnets assigned.')
+        routers_and_matching_targets = {
+            router: router.intersect_scan_targets(scan_targets)
+            for router in routers
+        }
+        # intersect_network_sets(scan_targets, self.subnet_blocks)
+        if not any(routers_and_matching_targets.values()):
+            raise Exception('No routers have scan targets directly attached.')
 
         scan.subscans += [
-            Subscan.create(scanner, matched_targets)
-            for scanner, matched_targets
-            in scanners_and_matching_targets.items()
+            Subscan.create(router_scanner_map[router], matched_targets)
+            for router, matched_targets
+            in routers_and_matching_targets.items()
             if matched_targets
         ]
         return scan
@@ -69,9 +83,11 @@ class SplittingScanSchema(colander.Schema):
     route_name='new_splitting_scan', request_method='GET',
     renderer='templates/new-scan.jinja2')
 def get_new_splitting_scan(request):
-    subnets = get_scanner_subnets(request.dbsession)
+    subnets = get_scannable_subnets(request.dbsession)
     if not subnets:
-        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
+    if not get_scanner_names(request.dbsession):
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     scan_form = SplittingScanSchema.form(subnets=subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
@@ -81,9 +97,11 @@ def get_new_splitting_scan(request):
     route_name='new_splitting_scan', request_method='POST',
     renderer='templates/new-scan.jinja2')
 def post_new_splitting_scan(request):
-    subnets = get_scanner_subnets(request.dbsession)
+    subnets = get_scannable_subnets(request.dbsession)
     if not subnets:
-        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
+    if not get_scanner_names(request.dbsession):
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     scan_form = SplittingScanSchema.form(subnets=subnets)
     controls = request.POST.items()
     try:

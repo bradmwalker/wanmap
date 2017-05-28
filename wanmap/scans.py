@@ -15,17 +15,18 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import relationship
 
-from .scanners import Scanner, ScannerSubnet
+from .network import RouterInterface
+from .scanners import Scanner
 from .schema import Persistable
 from .util import to_ip_network
 
 
 PING_SWEEP = '-sn -PE -n'
 SCAN_LISTING_PAGE_LENGTH = 20
-NO_MAPPED_SUBNETS_ALERT_MESSAGE = (
-    'There are no subnets mapped. The Splitting Scan distributes scan jobs to '
-    'scanners according to assigned subnets. Start scanners and/or assign '
-    'subnets to the scanners.')
+NO_KNOWN_SUBNETS_ALERT_MESSAGE = (
+    'WANmap does not know any scannable networks. Scan targets are '
+    'constrained to known routeable subnets to optimize scanning. Discover '
+    'the network to enable network scanning.')
 NO_SCANNERS_ALERT_MESSAGE = (
     'There are no available scanners. Start two or more scanners to enable '
     'Delta Scan.')
@@ -210,8 +211,11 @@ def get_scanner_names(dbsession):
     return {name for name, in dbsession.query(Scanner.name)}
 
 
-def get_scanner_subnets(dbsession):
-    return {subnet for subnet, in dbsession.query(ScannerSubnet.subnet)}
+def get_scannable_subnets(dbsession):
+    return {
+        interface.network
+        for interface, in dbsession.query(RouterInterface.address)
+    }
 
 
 def does_target_match_subnets(target, subnets):

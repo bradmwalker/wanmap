@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload, relationship
 import transaction
 
 from .schema import Persistable
-from .util import opposite_address
+from .util import intersect_network_sets, opposite_address
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,18 @@ class Router(Persistable):
     @property
     def interfaces(self):
         return frozenset(interface.address for interface in self._interfaces)
+
+    @property
+    def connected_subnets(self):
+        return frozenset(interface.network for interface in self.interfaces)
+
+    def is_scanner_link_local(self, scanner):
+        return any(
+            scanner.interface in interface.network
+            for interface in self.interfaces)
+
+    def intersect_scan_targets(self, scan_targets):
+        return intersect_network_sets(scan_targets, self.connected_subnets)
 
 
 class RouterInterface(Persistable):

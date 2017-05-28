@@ -3,18 +3,17 @@
 <div class="row">
   <h4>Scanners</h4>
   <table class="table">
-      <thead><tr><th>Name</th><th>Interface</th><th>Assigned Subnets</th></thead>
+      <thead><tr><th>Name</th><th>Interface</th></thead>
       <tbody>
     {% if scanners %}
     {% for scanner in scanners %}
         <tr>
-          <td><a href="{{ request.route_url('show_scanner', name=scanner.name) }}">{{ scanner.name }}</a></td>
+          <td>{{ scanner.name }}</td>
           <td>{{ scanner.interface }}</td>
-          <td>{% for subnet in scanner.subnets %}{{ subnet.subnet }} {% endfor %}</td>
         </tr>
     {% endfor %}
     {% else %}
-      <tr><td span="3">No scanners found.</td></tr>
+      <tr><td span="2">No scanners found.</td></tr>
     {% endif %}
     </tbody>
   </table>

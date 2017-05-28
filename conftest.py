@@ -1,13 +1,16 @@
+from ipaddress import ip_interface
 from itertools import starmap
 import logging
 import os
 from unittest.mock import patch
+from uuid import UUID
 
 from pyramid.paster import get_appsettings, setup_logging
 from pyramid.testing import DummyRequest
 import pytest
 from webtest import TestApp
 
+from wanmap.network import Router
 from wanmap.scanners import Scanner
 import wanmap.schema
 
@@ -91,3 +94,27 @@ def fake_wan_scanners(dbsession):
     scanners = tuple(starmap(Scanner.create, scanners.items()))
     dbsession.add_all(scanners)
     return scanners
+
+
+@pytest.fixture
+def fake_wan_routers(dbsession):
+    """Router instances representing those in the E2E fake WAN environment."""
+    routers = {
+        UUID('35c1bb78-bbe4-43cc-a50c-5af77c0a8af6'): (     # r0
+            '10.1.32.1/20 10.1.0.1/20 10.1.80.1/20 10.1.96.1/20 10.1.112.1/20 '
+            '10.1.128.1/20 10.1.144.1/20 192.168.0.1/30 10.1.208.1/20 '
+            '10.1.224.1/20 10.1.176.1/20 10.1.192.1/20 10.1.160.1/20 '
+            '10.1.240.1/20 10.1.48.1/20 192.168.0.5/30 10.1.64.1/20 '
+            '10.1.16.1/20 192.0.2.1/30'),
+        UUID('7a406613-2162-4a00-8dbb-40f88b90021a'): (     # r1
+            '10.2.0.1/24 192.168.0.2/30'),
+        UUID('a2564094-5973-4d43-9a89-2fcd86d972e0'): (     # dmz
+            '203.0.113.1/24 192.168.0.6/30'),
+    }
+    routers = (
+        (name, map(ip_interface, interfaces.split()))
+        for name, interfaces in routers.items()
+    )
+    routers = tuple(starmap(Router.create, routers))
+    dbsession.add_all(routers)
+    return routers
