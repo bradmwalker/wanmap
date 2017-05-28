@@ -46,7 +46,7 @@ def test_fake_wan_scanners_online(base_url, selenium):
 
     fake_wan_scanner_names = 'dmzscanner', 'external', 'scanner1', 'scanner2'
     for scanner_name in fake_wan_scanner_names:
-        query = '//tr[td/a/text()="{}"]'.format(scanner_name)
+        query = '//tr[td/text()="{}"]'.format(scanner_name)
         scanner_row = selenium.find_element_by_xpath(query)
         assert scanner_row
 
