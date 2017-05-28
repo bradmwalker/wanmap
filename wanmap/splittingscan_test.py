@@ -4,7 +4,7 @@ import pytest
 from .scans import PING_SWEEP
 from .splittingscan import (
     SplittingScan,
-    SplittingScanSchema, NO_MAPPED_SUBNETS_ALERT_MESSAGE,
+    SplittingScanSchema, NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 
 
@@ -211,7 +211,7 @@ def test_new_splitting_scan_without_subnets_alerts(
         lambda _: set())
     response = fresh_app.request('/scans/new-splitting', method=method)
     alert_div = response.html.find('div', class_='alert')
-    assert NO_MAPPED_SUBNETS_ALERT_MESSAGE in alert_div.text
+    assert NO_KNOWN_SUBNETS_ALERT_MESSAGE in alert_div.text
 
 
 @pytest.mark.parametrize('method', ('GET', 'POST'))

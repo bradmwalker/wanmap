@@ -15,7 +15,7 @@ from .network import Router
 from .scanners import Scanner
 from .scans import (
     get_scannable_subnets, Scan, ScanTarget, ScanTargets, Subscan,
-    NO_MAPPED_SUBNETS_ALERT_MESSAGE,
+    NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
 
@@ -80,7 +80,7 @@ class SplittingScanSchema(colander.Schema):
 def get_new_splitting_scan(request):
     subnets = get_scannable_subnets(request.dbsession)
     if not subnets:
-        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
     scan_form = SplittingScanSchema.form(subnets=subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
@@ -92,7 +92,7 @@ def get_new_splitting_scan(request):
 def post_new_splitting_scan(request):
     subnets = get_scannable_subnets(request.dbsession)
     if not subnets:
-        return {'error_message': NO_MAPPED_SUBNETS_ALERT_MESSAGE}
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
     scan_form = SplittingScanSchema.form(subnets=subnets)
     controls = request.POST.items()
     try:
