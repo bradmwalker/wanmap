@@ -20,10 +20,6 @@ def persisted_scanner(dbsession, scanner):
     return scanner
 
 
-def test_scanner_has_connected_subnet(scanner):
-    assert scanner.interface.network in scanner.subnet_blocks
-
-
 def test_show_scanner_found(view_request, persisted_scanner):
     view_request.matchdict['name'] = persisted_scanner.name
     response = show_scanner(view_request)
