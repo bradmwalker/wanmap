@@ -8,7 +8,7 @@ import time
 
 WANMAP_DEPENDENCIES = '''
 postgresql-server rabbitmq-server redis gcc redhat-rpm-config postgresql-devel
-python3-devel python3-wheel libffi-devel openssl-devel nmap
+python36 libffi-devel openssl-devel nmap
 '''.split()
 MININET_DEPENDENCIES = '''
 gcc make socat psmisc xterm openssh-clients iperf net-tools iproute telnet
@@ -124,7 +124,7 @@ def install_guest_virtualenv(ctx):
         'adduser --system wanmap -m -d /opt/wanmap '
         # password: wanmap
         '-p $6$dig6uX2p$3Z.qutvJTYLINPtggcK2csBqXBuWDgJB2z4rRsvuX82R5zfWvbPM2.Ul.AATmWB5zOz06xph6oF1OZUjxdxLT1')
-    guest.run('sudo -u wanmap pyvenv-3.5 /opt/wanmap')
+    guest.run('sudo -u wanmap pyvenv-3.6 /opt/wanmap')
     guest.run_with_host_net(
         'sudo -u wanmap '
         '/opt/wanmap/bin/pip install -r /wanmap/requirements.dev.txt')
