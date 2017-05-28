@@ -23,7 +23,7 @@ _logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def persisted_scan(dbsession, fake_wan_scanners):
+def persisted_scan(dbsession, fake_wan_scanners, fake_wan_routers):
     scan = SplittingScan.create(
         dbsession, parameters=PING_SWEEP, targets=('10.0.0.0/8',))
     dbsession.add(scan)
