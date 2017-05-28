@@ -15,7 +15,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import relationship
 
-from .scanners import Scanner, ScannerSubnet
+from .network import RouterInterface
+from .scanners import Scanner
 from .schema import Persistable
 from .util import to_ip_network
 
@@ -211,7 +212,10 @@ def get_scanner_names(dbsession):
 
 
 def get_scanner_subnets(dbsession):
-    return {subnet for subnet, in dbsession.query(ScannerSubnet.subnet)}
+    return {
+        interface.network
+        for interface, in dbsession.query(RouterInterface.address)
+    }
 
 
 def does_target_match_subnets(target, subnets):
