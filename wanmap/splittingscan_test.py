@@ -197,7 +197,7 @@ def test_splitting_scan_subnets_restricts_overlapping_host(
 def test_new_splitting_scan_without_subnets_has_no_form(
     monkeypatch, fresh_app, method):
     monkeypatch.setattr(
-        'wanmap.splittingscan.get_scanner_subnets',
+        'wanmap.splittingscan.get_scannable_subnets',
         lambda _: set())
     response = fresh_app.request('/scans/new-splitting', method=method)
     assert not response.forms
@@ -207,7 +207,7 @@ def test_new_splitting_scan_without_subnets_has_no_form(
 def test_new_splitting_scan_without_subnets_alerts(
     monkeypatch, fresh_app, method):
     monkeypatch.setattr(
-        'wanmap.splittingscan.get_scanner_subnets',
+        'wanmap.splittingscan.get_scannable_subnets',
         lambda _: set())
     response = fresh_app.request('/scans/new-splitting', method=method)
     alert_div = response.html.find('div', class_='alert')
@@ -218,7 +218,7 @@ def test_new_splitting_scan_without_subnets_alerts(
 def test_new_splitting_scan_with_subnets_has_form(
     monkeypatch, fresh_app, method):
     monkeypatch.setattr(
-        'wanmap.splittingscan.get_scanner_subnets',
+        'wanmap.splittingscan.get_scannable_subnets',
         lambda _: {'10.1.0.0/24'})
     response = fresh_app.request('/scans/new-splitting', method=method)
     assert response.forms['splitting-scan']

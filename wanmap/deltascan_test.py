@@ -7,7 +7,7 @@ from .scans import (
 )
 
 
-def test_create_delta_scan(dbsession, fake_wan_scanners):
+def test_create_delta_scan(dbsession, fake_wan_scanners, fake_wan_routers):
     scanner_a, scanner_b, *_ = (scanner.name for scanner in fake_wan_scanners)
     scan = DeltaScan.create(
         session=dbsession, parameters=PING_SWEEP,

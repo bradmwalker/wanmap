@@ -211,7 +211,7 @@ def get_scanner_names(dbsession):
     return {name for name, in dbsession.query(Scanner.name)}
 
 
-def get_scanner_subnets(dbsession):
+def get_scannable_subnets(dbsession):
     return {
         interface.network
         for interface, in dbsession.query(RouterInterface.address)

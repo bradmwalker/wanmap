@@ -13,7 +13,7 @@ from .scanners import Scanner
 from .scans import (
     Scan, ScanTarget, Subscan,
     ScanTargets, ScannerPair,
-    get_scanner_names, get_scanner_subnets,
+    get_scanner_names, get_scannable_subnets,
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
@@ -37,7 +37,7 @@ class DeltaScan(Scan):
         created_at = arrow.now().datetime
         scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
         scan.targets.extend(ScanTarget.from_fields(targets))
-        scannable_subnets = get_scanner_subnets(session)
+        scannable_subnets = get_scannable_subnets(session)
         scan_targets = {target.net_block for target in scan.targets}
         subscan_targets = intersect_network_sets(
             scan_targets, scannable_subnets)
@@ -72,7 +72,7 @@ def get_new_delta_scan(request):
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     elif len(scanner_names) == 1:
         return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    subnets = get_scanner_subnets(request.dbsession)
+    subnets = get_scannable_subnets(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names, subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
@@ -87,7 +87,7 @@ def post_new_delta_scan(request):
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     elif len(scanner_names) == 1:
         return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    subnets = get_scanner_subnets(request.dbsession)
+    subnets = get_scannable_subnets(request.dbsession)
     scan_form = DeltaScanSchema.form(scanner_names, subnets)
     controls = request.POST.items()
     try:
