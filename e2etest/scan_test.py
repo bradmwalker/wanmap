@@ -56,7 +56,7 @@ def test_splitting_scan_live(base_url, selenium):
     selenium.implicitly_wait(3)
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-splitting-scan')
+    new_scan_link = selenium.find_element_by_id('new-scan')
     new_scan_link.click()
 
     # TODO: Rename field buttons
@@ -81,7 +81,7 @@ def test_delta_scan_live(base_url, selenium):
     """Quickly test a delta scan."""
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-delta-scan')
+    new_scan_link = selenium.find_element_by_id('new-scan')
     new_scan_link.click()
 
     # TODO: Rename field buttons
@@ -116,7 +116,7 @@ def test_fastest_scan_successfully_completes(base_url, selenium, trial):
     selenium.implicitly_wait(3)
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-splitting-scan')
+    new_scan_link = selenium.find_element_by_id('new-scan')
     new_scan_link.click()
 
     # TODO: Rename field buttons

@@ -6,8 +6,8 @@ from uuid import uuid4, UUID
 
 import arrow
 import colander
-from deform import Form, widget
-from pyramid.httpexceptions import HTTPNotFound
+from deform import Form, widget, ValidationFailure
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.view import view_config
 
 from sqlalchemy import (
@@ -15,6 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import joinedload, relationship
+import transaction
 
 from .network import Router, RouterInterface
 from .scanners import Scanner
@@ -23,14 +24,15 @@ from .util import intersect_network_sets, to_ip_network
 
 
 PING_SWEEP = '-sn -PE -n'
+SCAN_FORM_TITLE = 'Scan Network'
 SCAN_LISTING_PAGE_LENGTH = 20
 NO_KNOWN_SUBNETS_ALERT_MESSAGE = (
     'WANmap does not know any scannable networks. Scan targets are '
     'constrained to known routeable subnets to optimize scanning. Discover '
     'the network to enable network scanning.')
 NO_SCANNERS_ALERT_MESSAGE = (
-    'There are no available scanners. Start two or more scanners to enable '
-    'Delta Scan.')
+    'There are no available scanners. Start one or more scanners to enable '
+    'network scanning.')
 ONLY_ONE_SCANNER_ALERT_MESSAGE = (
     'There is only one available scanner. Start two or more scanners to '
     'enable Delta Scan.')
@@ -39,10 +41,50 @@ logger = logging.getLogger(__name__)
 
 
 def includeme(config):
+    config.add_route('new_scan', '/scans/new')
     config.add_route('show_scans', '/scans/')
     config.add_route('show_scan', '/scans/{id}/')
-    config.add_route('new_splitting_scan', '/scans/new-splitting')
-    config.add_route('new_delta_scan', '/scans/new-delta')
+
+
+@view_config(
+    route_name='new_scan', request_method='GET',
+    renderer='templates/new-scan.jinja2')
+def get_new_scan(request):
+    subnets = get_scannable_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
+    scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
+    scan_form = ScanSchema.form(scanner_names, subnets)
+    scan_form = scan_form.render({'scan_targets': ('',)})
+    return {'form_title': SCAN_FORM_TITLE, 'scan_form': scan_form}
+
+
+@view_config(
+    route_name='new_scan', request_method='POST',
+    renderer='templates/new-scan.jinja2')
+def post_new_scan(request):
+    subnets = get_scannable_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
+    scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
+    scan_form = ScanSchema.form(scanner_names, subnets)
+    controls = request.POST.items()
+    try:
+        appstruct = scan_form.validate(controls)
+    except ValidationFailure as e:
+        return {
+            'form_title': SCAN_FORM_TITLE,
+            'scan_form': e.render()
+        }
+    scan_class = SplittingScan if not appstruct['scanners'] else DeltaScan
+    with transaction.manager:
+        scan_id = schedule_scan(request.dbsession, scan_class, appstruct)
+    scan_redirect = request.route_url('show_scan', id=scan_id)
+    return HTTPFound(location=scan_redirect)
 
 
 # Maps to a form submission that could potentially run multiple scans on
