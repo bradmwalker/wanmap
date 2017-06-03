@@ -1,9 +1,10 @@
 from deform import ValidationFailure
 import pytest
 
+from .deltascan import ScanSchema
 from .scans import PING_SWEEP
 from .splittingscan import (
-    SplittingScan, SplittingScanSchema,
+    SplittingScan,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE, NO_SCANNERS_ALERT_MESSAGE,
 )
 
@@ -83,8 +84,9 @@ def test_create_splitting_host_match(
 
 @pytest.fixture
 def splitting_scan_form():
+    scanner_names = {'scanner-a', 'scanner-b'}
     subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
-    return SplittingScanSchema.form(subnets)
+    return ScanSchema.form(scanner_names, subnets)
 
 
 def test_splitting_scan_form_requires_nmap_options(splitting_scan_form):
@@ -257,14 +259,14 @@ def test_new_splitting_scan_with_scanners_and_subnets_has_form(
         'wanmap.splittingscan.get_scanner_names',
         lambda _: {'scanner1'})
     response = fresh_app.request('/scans/new-splitting', method=method)
-    assert response.forms['splitting-scan']
+    assert response.forms['scan']
 
 
 @pytest.mark.xfail(
     reason="Need to integrate sessions and attach scan to user in view")
 def test_post_new_splitting_scan(fresh_app):
     response = fresh_app.get('/scans/new-splitting')
-    scan_form = response.forms['splitting-scan']
+    scan_form = response.forms['scan']
     scan_form['scan_target'] = '127.0.0.1'
     response = scan_form.submit('submit')
     assert response.status_code != 302

@@ -60,7 +60,7 @@ def test_splitting_scan_live(base_url, selenium):
     new_scan_link.click()
 
     # TODO: Rename field buttons
-    add_scan_target = selenium.find_element_by_id('deformField2-seqAdd')
+    add_scan_target = selenium.find_element_by_id('deformField5-seqAdd')
     add_scan_target.click()
     nmap_options = selenium.find_element_by_name('nmap_options')
     nmap_options.send_keys(PING_SWEEP)

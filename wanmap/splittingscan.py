@@ -2,8 +2,7 @@ from itertools import product
 from uuid import uuid4
 
 import arrow
-import colander
-from deform import Form, ValidationFailure  # , widget
+from deform import ValidationFailure
 from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
 from sqlalchemy import Column, ForeignKey
@@ -11,11 +10,12 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import joinedload
 import transaction
 
+from .deltascan import ScanSchema
 from .network import Router
 from .scanners import Scanner
 from .scans import (
     get_scanner_names, get_scannable_subnets,
-    Scan, ScanTarget, ScanTargets, Subscan,
+    Scan, ScanTarget, Subscan,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
@@ -69,16 +69,6 @@ class SplittingScan(Scan):
         return scan
 
 
-class SplittingScanSchema(colander.Schema):
-    nmap_options = colander.SchemaNode(colander.String())
-    scan_targets = ScanTargets()
-
-    @classmethod
-    def form(cls, subnets):
-        schema = cls().bind(subnets=subnets)
-        return Form(schema, formid='splitting-scan', buttons=('submit',))
-
-
 @view_config(
     route_name='new_splitting_scan', request_method='GET',
     renderer='templates/new-scan.jinja2')
@@ -86,9 +76,10 @@ def get_new_splitting_scan(request):
     subnets = get_scannable_subnets(request.dbsession)
     if not subnets:
         return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
-    if not get_scanner_names(request.dbsession):
+    scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
-    scan_form = SplittingScanSchema.form(subnets=subnets)
+    scan_form = ScanSchema.form(scanner_names=scanner_names, subnets=subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': SPLITTING_SCAN_FORM_TITLE, 'scan_form': scan_form}
 
@@ -100,9 +91,10 @@ def post_new_splitting_scan(request):
     subnets = get_scannable_subnets(request.dbsession)
     if not subnets:
         return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
-    if not get_scanner_names(request.dbsession):
+    scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
-    scan_form = SplittingScanSchema.form(subnets=subnets)
+    scan_form = ScanSchema.form(scanner_names=scanner_names, subnets=subnets)
     controls = request.POST.items()
     try:
         appstruct = scan_form.validate(controls)
