@@ -243,11 +243,14 @@ class ScannerPair(colander.Schema):
     scanner_a = colander.SchemaNode(
         colander.String(),
         widget=deferred_scanner_select_widget,
-        validator=deferred_scanner_select_validator)
+        validator=deferred_scanner_select_validator,
+    )
     scanner_b = colander.SchemaNode(
         colander.String(),
         widget=deferred_scanner_select_widget,
-        validator=deferred_scanner_select_validator)
+        validator=deferred_scanner_select_validator,
+        description='Choose scanners to perform a differential scan.',
+    )
 
     def validator(self, node, cstruct):
         scanner_a, scanner_b = cstruct['scanner_a'], cstruct['scanner_b']

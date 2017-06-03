@@ -85,6 +85,9 @@ def test_delta_scan_live(base_url, selenium):
     new_scan_link.click()
 
     # TODO: Rename field buttons
+    collapsed_scanners = selenium.find_element_by_css_selector(
+        'a[href*=collapse-deformField2')
+    collapsed_scanners.click()
     nmap_options = selenium.find_element_by_name('nmap_options')
     nmap_options.send_keys(PING_SWEEP)
     scanner_a = Select(selenium.find_element_by_name('scanner_a'))

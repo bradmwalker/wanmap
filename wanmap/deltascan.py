@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import arrow
 import colander
-from deform import Form, ValidationFailure
+from deform import Form, ValidationFailure, widget
 from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
 from sqlalchemy import Column, ForeignKey
@@ -61,7 +61,8 @@ class DeltaScan(Scan):
 
 class DeltaScanSchema(colander.Schema):
     nmap_options = colander.SchemaNode(colander.String())
-    scanners = ScannerPair()
+    scanners = ScannerPair(
+        widget=widget.MappingWidget(template='mapping_accordion', open=False))
     scan_targets = ScanTargets()
 
     @classmethod
