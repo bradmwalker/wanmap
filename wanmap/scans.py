@@ -396,3 +396,16 @@ def show_scans(request):
         order_by(Scan.created_at.desc())
         [:SCAN_LISTING_PAGE_LENGTH])
     return {'scans': scans}
+
+
+def schedule_scan(dbsession, scan_class, appstruct):
+    # TODO: Fix circular import
+    from .tasks import scan_workflow
+    # TODO: Add user from session
+    # TODO: Add guest access
+    scan = scan_class.from_appstruct(dbsession, appstruct)
+    scan_id = scan.id
+    dbsession.add(scan)
+    dbsession.flush()
+    scan_workflow.delay(scan_id)
+    return scan_id

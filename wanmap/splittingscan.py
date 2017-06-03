@@ -4,11 +4,10 @@ from pyramid.view import view_config
 import transaction
 
 from .scans import (
-    get_scanner_names, get_scannable_subnets,
+    get_scanner_names, get_scannable_subnets, schedule_scan,
     SplittingScan, ScanSchema,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
-from .tasks import scan_workflow
 
 
 NO_SCANNERS_ALERT_MESSAGE = (
@@ -52,17 +51,6 @@ def post_new_splitting_scan(request):
             'scan_form': e.render()
         }
     with transaction.manager:
-        scan_id = schedule_splitting_scan(request.dbsession, appstruct)
+        scan_id = schedule_scan(request.dbsession, SplittingScan, appstruct)
     scan_redirect = request.route_url('show_scan', id=scan_id)
     return HTTPFound(location=scan_redirect)
-
-
-def schedule_splitting_scan(dbsession, appstruct):
-    # TODO: Add user from session
-    # TODO: Add guest access
-    scan = SplittingScan.from_appstruct(dbsession, appstruct)
-    scan_id = scan.id
-    dbsession.add(scan)
-    dbsession.flush()
-    scan_workflow.delay(scan_id)
-    return scan_id
