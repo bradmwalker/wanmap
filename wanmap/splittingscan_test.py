@@ -1,8 +1,7 @@
 import pytest
 
-from .scans import PING_SWEEP
+from .scans import SplittingScan, PING_SWEEP
 from .splittingscan import (
-    SplittingScan,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE, NO_SCANNERS_ALERT_MESSAGE,
 )
 

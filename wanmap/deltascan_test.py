@@ -1,11 +1,10 @@
 import pytest
 
 from .deltascan import (
-    DeltaScan,
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
-from .scans import PING_SWEEP
+from .scans import DeltaScan, PING_SWEEP
 
 
 def test_create_delta_scan(dbsession, fake_wan_scanners, fake_wan_routers):

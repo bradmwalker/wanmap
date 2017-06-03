@@ -1,9 +1,10 @@
 import enum
 from ipaddress import ip_network
-from itertools import combinations
+from itertools import combinations, product
 import logging
-import uuid
+from uuid import uuid4, UUID
 
+import arrow
 import colander
 from deform import Form, widget
 from pyramid.httpexceptions import HTTPNotFound
@@ -13,12 +14,12 @@ from sqlalchemy import (
     Column, DateTime, ForeignKey, ForeignKeyConstraint, String
 )
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import joinedload, relationship
 
-from .network import RouterInterface
+from .network import Router, RouterInterface
 from .scanners import Scanner
 from .schema import Persistable
-from .util import to_ip_network
+from .util import intersect_network_sets, to_ip_network
 
 
 PING_SWEEP = '-sn -PE -n'
@@ -81,6 +82,78 @@ class Scan(Persistable):
             return Scan.States.PROGRESSING
         else:
             return Scan.States.SCHEDULED
+
+
+class DeltaScan(Scan):
+    __tablename__ = 'delta_scans'
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'delta'}
+
+    @classmethod
+    def create(cls, session, parameters, scanner_names, targets):
+        if not targets:
+            raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
+        scan.targets.extend(ScanTarget.from_fields(targets))
+        scannable_subnets = get_scannable_subnets(session)
+        scan_targets = {target.net_block for target in scan.targets}
+        subscan_targets = intersect_network_sets(
+            scan_targets, scannable_subnets)
+
+        scanner_a = session.query(Scanner).get(scanner_names[0])
+        scanner_b = session.query(Scanner).get(scanner_names[1])
+
+        scan.subscans += [
+            Subscan.create(scanner_a, subscan_targets),
+            Subscan.create(scanner_b, subscan_targets),
+        ]
+        return scan
+
+
+class SplittingScan(Scan):
+    __tablename__ = 'splitting_scans'
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'splitting'}
+
+    @classmethod
+    def create(cls, session, parameters, targets):
+        if not targets:
+            raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
+        scan.targets.extend(ScanTarget.from_fields(targets))
+        scan_targets = {target.net_block for target in scan.targets}
+        scanners = session.query(Scanner).all()
+        routers = (
+            session.query(Router).
+            options(joinedload('_interfaces')).all())
+        router_scanner_map = {
+            router: scanner for router, scanner in product(routers, scanners)
+            if router.is_scanner_link_local(scanner)
+        }
+
+        routers_and_matching_targets = {
+            router: router.intersect_scan_targets(scan_targets)
+            for router in routers
+        }
+        # intersect_network_sets(scan_targets, self.subnet_blocks)
+        if not any(routers_and_matching_targets.values()):
+            raise Exception('No routers have scan targets directly attached.')
+
+        scan.subscans += [
+            Subscan.create(router_scanner_map[router], matched_targets)
+            for router, matched_targets
+            in routers_and_matching_targets.items()
+            if matched_targets
+        ]
+        return scan
 
 
 class ScanTarget(Persistable):
@@ -288,7 +361,7 @@ def show_scan(request):
     try:
         # Hyphen separators and case insensitivity allow noncanonical
         # representations.
-        id_ = uuid.UUID(request.matchdict['id'])
+        id_ = UUID(request.matchdict['id'])
     except ValueError:
         raise HTTPNotFound()
     scan = request.dbsession.query(Scan).get(id_)

@@ -9,9 +9,9 @@ from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
 from .scans import (
-    get_scannable_subnets, Scan, ScanSchema, show_scan, show_scans, PING_SWEEP,
+    get_scannable_subnets, Scan, SplittingScan, ScanSchema, show_scan,
+    show_scans, PING_SWEEP,
 )
-from .splittingscan import SplittingScan
 
 FAKE_SCAN_RESULT_XML = (
     '<?xml version="1.0" encoding="UTF-8"?>'

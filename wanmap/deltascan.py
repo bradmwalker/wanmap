@@ -1,21 +1,14 @@
-from uuid import uuid4
-
-import arrow
 from deform import ValidationFailure
 from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
-from sqlalchemy import Column, ForeignKey
-from sqlalchemy.dialects import postgresql
 import transaction
 
-from .scanners import Scanner
 from .scans import (
-    Scan, ScanSchema, ScanTarget, Subscan,
+    DeltaScan, ScanSchema,
     get_scanner_names, get_scannable_subnets,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow
-from .util import intersect_network_sets
 
 
 NO_SCANNERS_ALERT_MESSAGE = (
@@ -25,36 +18,6 @@ ONLY_ONE_SCANNER_ALERT_MESSAGE = (
     'There is only one available scanner. Start two or more scanners to '
     'enable Delta Scan.')
 DELTA_SCAN_FORM_TITLE = 'Delta Network Scan'
-
-
-class DeltaScan(Scan):
-    __tablename__ = 'delta_scans'
-    id = Column(
-        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
-        primary_key=True)
-
-    __mapper_args__ = {'polymorphic_identity': 'delta'}
-
-    @classmethod
-    def create(cls, session, parameters, scanner_names, targets):
-        if not targets:
-            raise ValueError('Must specify at least one scanning target.')
-        created_at = arrow.now().datetime
-        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
-        scan.targets.extend(ScanTarget.from_fields(targets))
-        scannable_subnets = get_scannable_subnets(session)
-        scan_targets = {target.net_block for target in scan.targets}
-        subscan_targets = intersect_network_sets(
-            scan_targets, scannable_subnets)
-
-        scanner_a = session.query(Scanner).get(scanner_names[0])
-        scanner_b = session.query(Scanner).get(scanner_names[1])
-
-        scan.subscans += [
-            Subscan.create(scanner_a, subscan_targets),
-            Subscan.create(scanner_b, subscan_targets),
-        ]
-        return scan
 
 
 @view_config(
