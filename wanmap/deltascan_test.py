@@ -37,12 +37,21 @@ def delta_scan_form():
     return ScanSchema.form(scanner_names, subnets)
 
 
+def test_delta_scan_form_scanner_choices_are_optional(delta_scan_form):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scanners': {'scanner_a': '', 'scanner_b': ''},
+        'scan_targets': ['10.1.0.1']
+    }
+    delta_scan_form.validate_pstruct(appstruct)
+
+
 def test_delta_scan_form_requires_scanner_a_choice(delta_scan_form):
     with pytest.raises(ValidationFailure) as exc:
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': '', 'scanner_b': 'scanner-b'},
-            'scan_targets': ['10.0.0.1']
+            'scan_targets': ['10.1.0.1']
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
@@ -53,7 +62,7 @@ def test_delta_scan_form_requires_scanner_b_choice(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': 'scanner-a', 'scanner_b': ''},
-            'scan_targets': ['10.0.0.1']
+            'scan_targets': ['10.1.0.1']
         }
         delta_scan_form.validate_pstruct(appstruct)
     assert 'Required' in exc.value.render()
@@ -64,7 +73,7 @@ def test_delta_scan_form_requires_distinct_scanner_choices(delta_scan_form):
         appstruct = {
             'nmap_options': PING_SWEEP,
             'scanners': {'scanner_a': 'scanner-a', 'scanner_b': 'scanner-a'},
-            'scan_targets': ['10.0.0.1']
+            'scan_targets': ['10.1.0.1']
         }
         delta_scan_form.validate_pstruct(appstruct)
     form_html = exc.value.render()

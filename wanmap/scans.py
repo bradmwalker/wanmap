@@ -242,18 +242,29 @@ def deferred_scanner_select_validator(node, kw):
 class ScannerPair(colander.Schema):
     scanner_a = colander.SchemaNode(
         colander.String(),
+        missing=colander.drop,
         widget=deferred_scanner_select_widget,
         validator=deferred_scanner_select_validator,
     )
     scanner_b = colander.SchemaNode(
         colander.String(),
+        missing=colander.drop,
         widget=deferred_scanner_select_widget,
         validator=deferred_scanner_select_validator,
         description='Choose scanners to perform a differential scan.',
     )
 
     def validator(self, node, cstruct):
-        scanner_a, scanner_b = cstruct['scanner_a'], cstruct['scanner_b']
+        scanner_a = cstruct.get('scanner_a')
+        scanner_b = cstruct.get('scanner_b')
+        if not scanner_a and scanner_b:
+            exc = colander.Invalid(node)
+            exc['scanner_a'] = 'Required'
+            raise exc
+        if scanner_a and not scanner_b:
+            exc = colander.Invalid(node)
+            exc['scanner_b'] = 'Required'
+            raise exc
         if scanner_a and scanner_b and scanner_a == scanner_b:
             exc = colander.Invalid(node)
             exc['scanner_b'] = 'Must be different from Scanner A'
