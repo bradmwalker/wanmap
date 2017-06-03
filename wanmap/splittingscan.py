@@ -10,12 +10,11 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import joinedload
 import transaction
 
-from .deltascan import ScanSchema
 from .network import Router
 from .scanners import Scanner
 from .scans import (
     get_scanner_names, get_scannable_subnets,
-    Scan, ScanTarget, Subscan,
+    Scan, ScanSchema, ScanTarget, Subscan,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 from .tasks import scan_workflow

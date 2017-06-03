@@ -1,8 +1,7 @@
 from deform import ValidationFailure
 import pytest
 
-from .deltascan import ScanSchema
-from .scans import PING_SWEEP
+from .scans import ScanSchema, PING_SWEEP
 from .splittingscan import (
     SplittingScan,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE, NO_SCANNERS_ALERT_MESSAGE,

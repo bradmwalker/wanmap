@@ -1,8 +1,7 @@
 from uuid import uuid4
 
 import arrow
-import colander
-from deform import Form, ValidationFailure, widget
+from deform import ValidationFailure
 from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
 from sqlalchemy import Column, ForeignKey
@@ -11,8 +10,7 @@ import transaction
 
 from .scanners import Scanner
 from .scans import (
-    Scan, ScanTarget, Subscan,
-    ScanTargets, ScannerPair,
+    Scan, ScanSchema, ScanTarget, Subscan,
     get_scanner_names, get_scannable_subnets,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
@@ -57,18 +55,6 @@ class DeltaScan(Scan):
             Subscan.create(scanner_b, subscan_targets),
         ]
         return scan
-
-
-class ScanSchema(colander.Schema):
-    nmap_options = colander.SchemaNode(colander.String())
-    scanners = ScannerPair(
-        widget=widget.MappingWidget(template='mapping_accordion', open=False))
-    scan_targets = ScanTargets()
-
-    @classmethod
-    def form(cls, scanner_names, subnets):
-        schema = cls().bind(scanner_names=scanner_names, subnets=subnets)
-        return Form(schema, formid='scan', buttons=('submit',))
 
 
 @view_config(

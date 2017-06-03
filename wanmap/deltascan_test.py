@@ -2,11 +2,11 @@ from deform import ValidationFailure
 import pytest
 
 from .deltascan import (
-    DeltaScan, ScanSchema,
+    DeltaScan,
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
-from .scans import PING_SWEEP
+from .scans import ScanSchema, PING_SWEEP
 
 
 def test_create_delta_scan(dbsession, fake_wan_scanners, fake_wan_routers):

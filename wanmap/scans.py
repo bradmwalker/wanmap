@@ -5,7 +5,7 @@ import logging
 import uuid
 
 import colander
-from deform import widget
+from deform import Form, widget
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.view import view_config
 
@@ -269,6 +269,18 @@ class ScannerPair(colander.Schema):
             exc = colander.Invalid(node)
             exc['scanner_b'] = 'Must be different from Scanner A'
             raise exc
+
+
+class ScanSchema(colander.Schema):
+    nmap_options = colander.SchemaNode(colander.String())
+    scanners = ScannerPair(
+        widget=widget.MappingWidget(template='mapping_accordion', open=False))
+    scan_targets = ScanTargets()
+
+    @classmethod
+    def form(cls, scanner_names, subnets):
+        schema = cls().bind(scanner_names=scanner_names, subnets=subnets)
+        return Form(schema, formid='scan', buttons=('submit',))
 
 
 @view_config(route_name='show_scan', renderer='templates/scan.jinja2')
