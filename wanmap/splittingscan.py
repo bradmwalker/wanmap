@@ -52,21 +52,15 @@ def post_new_splitting_scan(request):
             'scan_form': e.render()
         }
     with transaction.manager:
-        scan_id = schedule_splitting_scan(
-            request.dbsession,
-            appstruct['nmap_options'],
-            *appstruct['scan_targets'])
+        scan_id = schedule_splitting_scan(request.dbsession, appstruct)
     scan_redirect = request.route_url('show_scan', id=scan_id)
     return HTTPFound(location=scan_redirect)
 
 
-def schedule_splitting_scan(dbsession, nmap_options, *targets):
+def schedule_splitting_scan(dbsession, appstruct):
     # TODO: Add user from session
     # TODO: Add guest access
-    scan = SplittingScan.create(
-        dbsession, parameters=nmap_options, targets=targets)
-    # Look into using zope transaction manager for celery tasks that depend on
-    # database records. Then mock out transactions.
+    scan = SplittingScan.from_appstruct(dbsession, appstruct)
     scan_id = scan.id
     dbsession.add(scan)
     dbsession.flush()

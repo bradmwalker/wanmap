@@ -59,24 +59,15 @@ def post_new_delta_scan(request):
             'scan_form': e.render()
         }
     with transaction.manager:
-        scan_id = schedule_delta_scan(
-            request.dbsession,
-            appstruct['nmap_options'],
-            (appstruct['scanners']['scanner_a'],
-             appstruct['scanners']['scanner_b']),
-            *appstruct['scan_targets'])
+        scan_id = schedule_delta_scan(request.dbsession, appstruct)
     scan_redirect = request.route_url('show_scan', id=scan_id)
     return HTTPFound(location=scan_redirect)
 
 
-def schedule_delta_scan(dbsession, nmap_options, scanner_names, *targets):
+def schedule_delta_scan(dbsession, appstruct):
     # TODO: Add user from session
     # TODO: Add guest access
-    scan = DeltaScan.create(
-        dbsession, parameters=nmap_options,
-        scanner_names=scanner_names, targets=targets)
-    # Look into using zope transaction manager for celery tasks that depend on
-    # database records. Then mock out transactions.
+    scan = DeltaScan.from_appstruct(dbsession, appstruct)
     scan_id = scan.id
     dbsession.add(scan)
     dbsession.flush()

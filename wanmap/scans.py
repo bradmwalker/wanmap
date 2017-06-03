@@ -93,6 +93,18 @@ class DeltaScan(Scan):
     __mapper_args__ = {'polymorphic_identity': 'delta'}
 
     @classmethod
+    def from_appstruct(cls, dbsession, appstruct):
+        nmap_options = appstruct['nmap_options'],
+        scanner_names = (
+            appstruct['scanners']['scanner_a'],
+            appstruct['scanners']['scanner_b']
+        )
+        targets = appstruct['scan_targets']
+        return cls.create(
+            dbsession, parameters=nmap_options,
+            scanner_names=scanner_names, targets=targets)
+
+    @classmethod
     def create(cls, session, parameters, scanner_names, targets):
         if not targets:
             raise ValueError('Must specify at least one scanning target.')
@@ -121,6 +133,12 @@ class SplittingScan(Scan):
         primary_key=True)
 
     __mapper_args__ = {'polymorphic_identity': 'splitting'}
+
+    @classmethod
+    def from_appstruct(cls, dbsession, appstruct):
+        nmap_options = appstruct['nmap_options'],
+        targets = appstruct['scan_targets']
+        return cls.create(dbsession, parameters=nmap_options, targets=targets)
 
     @classmethod
     def create(cls, session, parameters, targets):
