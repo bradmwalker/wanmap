@@ -135,17 +135,6 @@ def test_new_scan_with_two_scanners_has_scanner_selection(
     assert response.forms['scan']
 
 
-@pytest.mark.xfail(
-    reason="Need to integrate sessions and attach scan to user in view")
-def test_post_new_splitting_scan(fresh_app):
-    response = fresh_app.get('/scans/new')
-    scan_form = response.forms['scan']
-    scan_form['scan_target'] = '127.0.0.1'
-    response = scan_form.submit('submit')
-    assert response.status_code != 302
-    response.follow()
-
-
 @pytest.fixture
 def persisted_scan(dbsession, fake_wan_scanners, fake_wan_routers):
     scan = SplittingScan.create(
