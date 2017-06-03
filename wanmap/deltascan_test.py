@@ -2,7 +2,7 @@ from deform import ValidationFailure
 import pytest
 
 from .deltascan import (
-    DeltaScan, DeltaScanSchema,
+    DeltaScan, ScanSchema,
     NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
     NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
@@ -34,7 +34,7 @@ def test_create_delta_scan_errors_on_no_targets(dbsession, fake_wan_scanners):
 def delta_scan_form():
     scanner_names = {'scanner-a', 'scanner-b'}
     subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
-    return DeltaScanSchema.form(scanner_names, subnets)
+    return ScanSchema.form(scanner_names, subnets)
 
 
 def test_delta_scan_form_requires_scanner_a_choice(delta_scan_form):
@@ -176,4 +176,4 @@ def test_new_delta_scan_with_two_scanners_has_form(
         'wanmap.deltascan.get_scanner_names',
         lambda _: {'dc', 'branch'})
     response = fresh_app.request('/scans/new-delta', method=method)
-    assert response.forms['delta-scan']
+    assert response.forms['scan']

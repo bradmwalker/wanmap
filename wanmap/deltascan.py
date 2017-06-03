@@ -59,7 +59,7 @@ class DeltaScan(Scan):
         return scan
 
 
-class DeltaScanSchema(colander.Schema):
+class ScanSchema(colander.Schema):
     nmap_options = colander.SchemaNode(colander.String())
     scanners = ScannerPair(
         widget=widget.MappingWidget(template='mapping_accordion', open=False))
@@ -68,7 +68,7 @@ class DeltaScanSchema(colander.Schema):
     @classmethod
     def form(cls, scanner_names, subnets):
         schema = cls().bind(scanner_names=scanner_names, subnets=subnets)
-        return Form(schema, formid='delta-scan', buttons=('submit',))
+        return Form(schema, formid='scan', buttons=('submit',))
 
 
 @view_config(
@@ -83,7 +83,7 @@ def get_new_delta_scan(request):
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     elif len(scanner_names) == 1:
         return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    scan_form = DeltaScanSchema.form(scanner_names, subnets)
+    scan_form = ScanSchema.form(scanner_names, subnets)
     scan_form = scan_form.render({'scan_targets': ('',)})
     return {'form_title': DELTA_SCAN_FORM_TITLE, 'scan_form': scan_form}
 
@@ -100,7 +100,7 @@ def post_new_delta_scan(request):
         return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
     elif len(scanner_names) == 1:
         return {'error_message': ONLY_ONE_SCANNER_ALERT_MESSAGE}
-    scan_form = DeltaScanSchema.form(scanner_names, subnets)
+    scan_form = ScanSchema.form(scanner_names, subnets)
     controls = request.POST.items()
     try:
         appstruct = scan_form.validate(controls)
