@@ -11,6 +11,8 @@ import pytest
 from .scans import (
     get_scannable_subnets, Scan, SplittingScan, ScanSchema, show_scan,
     show_scans, PING_SWEEP,
+    NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
+    NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
 
 FAKE_SCAN_RESULT_XML = (
@@ -22,6 +24,126 @@ FAKE_SCAN_RESULT_XML = (
 
 
 _logger = logging.getLogger(__name__)
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_subnets_has_no_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: set())
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert not response.forms
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_subnets_alerts(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: set())
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert NO_KNOWN_SUBNETS_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_scanners_has_no_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: set())
+    response = fresh_app.request('/scans/new', method=method)
+    assert not response.forms
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_scanners_alerts(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: set())
+    response = fresh_app.request('/scans/new', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert NO_SCANNERS_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_scanners_and_subnets_has_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'scanner1'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert response.forms['scan']
+
+
+@pytest.mark.xfail(reason='Need to disable fieldset')
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_one_scanner_has_no_scanner_selection(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert not response.forms
+
+
+@pytest.mark.xfail(reason='Need to render informational message')
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_one_scanner_explains_enabling_scanner_selection(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert ONLY_ONE_SCANNER_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_two_scanners_has_scanner_selection(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc', 'branch'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert response.forms['scan']
+
+
+@pytest.mark.xfail(
+    reason="Need to integrate sessions and attach scan to user in view")
+def test_post_new_splitting_scan(fresh_app):
+    response = fresh_app.get('/scans/new')
+    scan_form = response.forms['scan']
+    scan_form['scan_target'] = '127.0.0.1'
+    response = scan_form.submit('submit')
+    assert response.status_code != 302
+    response.follow()
 
 
 @pytest.fixture
