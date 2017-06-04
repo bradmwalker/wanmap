@@ -1,35 +1,38 @@
 import enum
 from ipaddress import ip_network
-from itertools import combinations
+from itertools import combinations, product
 import logging
-import uuid
+from uuid import uuid4, UUID
 
+import arrow
 import colander
-from deform import widget
-from pyramid.httpexceptions import HTTPNotFound
+from deform import Form, widget, ValidationFailure
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.view import view_config
 
 from sqlalchemy import (
     Column, DateTime, ForeignKey, ForeignKeyConstraint, String
 )
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import joinedload, relationship
+import transaction
 
-from .network import RouterInterface
+from .network import Router, RouterInterface
 from .scanners import Scanner
 from .schema import Persistable
-from .util import to_ip_network
+from .util import intersect_network_sets, to_ip_network
 
 
 PING_SWEEP = '-sn -PE -n'
+SCAN_FORM_TITLE = 'Scan Network'
 SCAN_LISTING_PAGE_LENGTH = 20
 NO_KNOWN_SUBNETS_ALERT_MESSAGE = (
     'WANmap does not know any scannable networks. Scan targets are '
     'constrained to known routeable subnets to optimize scanning. Discover '
     'the network to enable network scanning.')
 NO_SCANNERS_ALERT_MESSAGE = (
-    'There are no available scanners. Start two or more scanners to enable '
-    'Delta Scan.')
+    'There are no available scanners. Start one or more scanners to enable '
+    'network scanning.')
 ONLY_ONE_SCANNER_ALERT_MESSAGE = (
     'There is only one available scanner. Start two or more scanners to '
     'enable Delta Scan.')
@@ -38,10 +41,50 @@ logger = logging.getLogger(__name__)
 
 
 def includeme(config):
+    config.add_route('new_scan', '/scans/new')
     config.add_route('show_scans', '/scans/')
     config.add_route('show_scan', '/scans/{id}/')
-    config.add_route('new_splitting_scan', '/scans/new-splitting')
-    config.add_route('new_delta_scan', '/scans/new-delta')
+
+
+@view_config(
+    route_name='new_scan', request_method='GET',
+    renderer='templates/new-scan.jinja2')
+def get_new_scan(request):
+    subnets = get_scannable_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
+    scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
+    scan_form = ScanSchema.form(scanner_names, subnets)
+    scan_form = scan_form.render({'scan_targets': ('',)})
+    return {'form_title': SCAN_FORM_TITLE, 'scan_form': scan_form}
+
+
+@view_config(
+    route_name='new_scan', request_method='POST',
+    renderer='templates/new-scan.jinja2')
+def post_new_scan(request):
+    subnets = get_scannable_subnets(request.dbsession)
+    if not subnets:
+        return {'error_message': NO_KNOWN_SUBNETS_ALERT_MESSAGE}
+    scanner_names = get_scanner_names(request.dbsession)
+    if not scanner_names:
+        return {'error_message': NO_SCANNERS_ALERT_MESSAGE}
+    scan_form = ScanSchema.form(scanner_names, subnets)
+    controls = request.POST.items()
+    try:
+        appstruct = scan_form.validate(controls)
+    except ValidationFailure as e:
+        return {
+            'form_title': SCAN_FORM_TITLE,
+            'scan_form': e.render()
+        }
+    scan_class = SplittingScan if not appstruct['scanners'] else DeltaScan
+    with transaction.manager:
+        scan_id = schedule_scan(request.dbsession, scan_class, appstruct)
+    scan_redirect = request.route_url('show_scan', id=scan_id)
+    return HTTPFound(location=scan_redirect)
 
 
 # Maps to a form submission that could potentially run multiple scans on
@@ -81,6 +124,96 @@ class Scan(Persistable):
             return Scan.States.PROGRESSING
         else:
             return Scan.States.SCHEDULED
+
+
+class DeltaScan(Scan):
+    __tablename__ = 'delta_scans'
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'delta'}
+
+    @classmethod
+    def from_appstruct(cls, dbsession, appstruct):
+        nmap_options = appstruct['nmap_options'],
+        scanner_names = (
+            appstruct['scanners']['scanner_a'],
+            appstruct['scanners']['scanner_b']
+        )
+        targets = appstruct['scan_targets']
+        return cls.create(
+            dbsession, parameters=nmap_options,
+            scanner_names=scanner_names, targets=targets)
+
+    @classmethod
+    def create(cls, session, parameters, scanner_names, targets):
+        if not targets:
+            raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
+        scan.targets.extend(ScanTarget.from_fields(targets))
+        scannable_subnets = get_scannable_subnets(session)
+        scan_targets = {target.net_block for target in scan.targets}
+        subscan_targets = intersect_network_sets(
+            scan_targets, scannable_subnets)
+
+        scanner_a = session.query(Scanner).get(scanner_names[0])
+        scanner_b = session.query(Scanner).get(scanner_names[1])
+
+        scan.subscans += [
+            Subscan.create(scanner_a, subscan_targets),
+            Subscan.create(scanner_b, subscan_targets),
+        ]
+        return scan
+
+
+class SplittingScan(Scan):
+    __tablename__ = 'splitting_scans'
+    id = Column(
+        postgresql.UUID(as_uuid=True), ForeignKey('scans.id'),
+        primary_key=True)
+
+    __mapper_args__ = {'polymorphic_identity': 'splitting'}
+
+    @classmethod
+    def from_appstruct(cls, dbsession, appstruct):
+        nmap_options = appstruct['nmap_options'],
+        targets = appstruct['scan_targets']
+        return cls.create(dbsession, parameters=nmap_options, targets=targets)
+
+    @classmethod
+    def create(cls, session, parameters, targets):
+        if not targets:
+            raise ValueError('Must specify at least one scanning target.')
+        created_at = arrow.now().datetime
+        scan = cls(id=uuid4(), created_at=created_at, parameters=parameters)
+        scan.targets.extend(ScanTarget.from_fields(targets))
+        scan_targets = {target.net_block for target in scan.targets}
+        scanners = session.query(Scanner).all()
+        routers = (
+            session.query(Router).
+            options(joinedload('_interfaces')).all())
+        router_scanner_map = {
+            router: scanner for router, scanner in product(routers, scanners)
+            if router.is_scanner_link_local(scanner)
+        }
+
+        routers_and_matching_targets = {
+            router: router.intersect_scan_targets(scan_targets)
+            for router in routers
+        }
+        # intersect_network_sets(scan_targets, self.subnet_blocks)
+        if not any(routers_and_matching_targets.values()):
+            raise Exception('No routers have scan targets directly attached.')
+
+        scan.subscans += [
+            Subscan.create(router_scanner_map[router], matched_targets)
+            for router, matched_targets
+            in routers_and_matching_targets.items()
+            if matched_targets
+        ]
+        return scan
 
 
 class ScanTarget(Persistable):
@@ -242,19 +375,49 @@ def deferred_scanner_select_validator(node, kw):
 class ScannerPair(colander.Schema):
     scanner_a = colander.SchemaNode(
         colander.String(),
+        missing=colander.drop,
         widget=deferred_scanner_select_widget,
-        validator=deferred_scanner_select_validator)
+        validator=deferred_scanner_select_validator,
+    )
     scanner_b = colander.SchemaNode(
         colander.String(),
+        missing=colander.drop,
         widget=deferred_scanner_select_widget,
-        validator=deferred_scanner_select_validator)
+        validator=deferred_scanner_select_validator,
+        description='Choose scanners to perform a differential scan.',
+    )
 
     def validator(self, node, cstruct):
-        scanner_a, scanner_b = cstruct['scanner_a'], cstruct['scanner_b']
+        scanner_a = cstruct.get('scanner_a')
+        scanner_b = cstruct.get('scanner_b')
+        if not scanner_a and scanner_b:
+            exc = colander.Invalid(node)
+            exc['scanner_a'] = 'Required'
+            raise exc
+        if scanner_a and not scanner_b:
+            exc = colander.Invalid(node)
+            exc['scanner_b'] = 'Required'
+            raise exc
         if scanner_a and scanner_b and scanner_a == scanner_b:
             exc = colander.Invalid(node)
             exc['scanner_b'] = 'Must be different from Scanner A'
             raise exc
+
+
+class ScanSchema(colander.Schema):
+    nmap_options = colander.SchemaNode(colander.String())
+    scanners = ScannerPair(
+        widget=widget.MappingWidget(template='mapping_accordion', open=False))
+    scan_targets = ScanTargets()
+
+    def after_bind(self, schema, kw):
+        if len(kw['scanner_names']) <= 1:
+            del self['scanners']
+
+    @classmethod
+    def form(cls, scanner_names, subnets):
+        schema = cls().bind(scanner_names=scanner_names, subnets=subnets)
+        return Form(schema, formid='scan', buttons=('submit',))
 
 
 @view_config(route_name='show_scan', renderer='templates/scan.jinja2')
@@ -262,7 +425,7 @@ def show_scan(request):
     try:
         # Hyphen separators and case insensitivity allow noncanonical
         # representations.
-        id_ = uuid.UUID(request.matchdict['id'])
+        id_ = UUID(request.matchdict['id'])
     except ValueError:
         raise HTTPNotFound()
     scan = request.dbsession.query(Scan).get(id_)
@@ -279,3 +442,16 @@ def show_scans(request):
         order_by(Scan.created_at.desc())
         [:SCAN_LISTING_PAGE_LENGTH])
     return {'scans': scans}
+
+
+def schedule_scan(dbsession, scan_class, appstruct):
+    # TODO: Fix circular import
+    from .tasks import scan_workflow
+    # TODO: Add user from session
+    # TODO: Add guest access
+    scan = scan_class.from_appstruct(dbsession, appstruct)
+    scan_id = scan.id
+    dbsession.add(scan)
+    dbsession.flush()
+    scan_workflow.delay(scan_id)
+    return scan_id

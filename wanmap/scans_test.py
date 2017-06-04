@@ -1,16 +1,19 @@
+from datetime import timedelta
 from ipaddress import ip_network
 import logging
 import uuid
 
 import arrow
-from datetime import timedelta
+from deform import ValidationFailure
 from pyramid.httpexceptions import HTTPNotFound
 import pytest
 
 from .scans import (
-    get_scannable_subnets, Scan, show_scan, show_scans, PING_SWEEP,
+    get_scannable_subnets, Scan, SplittingScan, ScanSchema, show_scan,
+    show_scans, PING_SWEEP,
+    NO_SCANNERS_ALERT_MESSAGE, ONLY_ONE_SCANNER_ALERT_MESSAGE,
+    NO_KNOWN_SUBNETS_ALERT_MESSAGE,
 )
-from .splittingscan import SplittingScan
 
 FAKE_SCAN_RESULT_XML = (
     '<?xml version="1.0" encoding="UTF-8"?>'
@@ -21,6 +24,116 @@ FAKE_SCAN_RESULT_XML = (
 
 
 _logger = logging.getLogger(__name__)
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_subnets_has_no_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: set())
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert not response.forms
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_subnets_alerts(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: set())
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert NO_KNOWN_SUBNETS_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_scanners_has_no_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: set())
+    response = fresh_app.request('/scans/new', method=method)
+    assert not response.forms
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_without_scanners_alerts(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: set())
+    response = fresh_app.request('/scans/new', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert NO_SCANNERS_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_scanners_and_subnets_has_form(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'scanner1'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert response.forms['scan']
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_one_scanner_has_no_scanner_selection(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert 'scanner_a' not in response.forms['scan'].fields
+    assert 'scanner_b' not in response.forms['scan'].fields
+
+
+@pytest.mark.xfail(reason='Need to render informational message')
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_one_scanner_explains_enabling_scanner_selection(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc'})
+    response = fresh_app.request('/scans/new', method=method)
+    alert_div = response.html.find('div', class_='alert')
+    assert ONLY_ONE_SCANNER_ALERT_MESSAGE in alert_div.text
+
+
+@pytest.mark.parametrize('method', ('GET', 'POST'))
+def test_new_scan_with_two_scanners_has_scanner_selection(
+    monkeypatch, fresh_app, method):
+    monkeypatch.setattr(
+        'wanmap.scans.get_scannable_subnets',
+        lambda _: {'10.1.0.0/24'})
+    monkeypatch.setattr(
+        'wanmap.scans.get_scanner_names',
+        lambda _: {'dc', 'branch'})
+    response = fresh_app.request('/scans/new', method=method)
+    assert response.forms['scan'].fields['scanner_a'][0].tag == 'select'
+    assert response.forms['scan'].fields['scanner_b'][0].tag == 'select'
 
 
 @pytest.fixture
@@ -121,3 +234,167 @@ def test_subscan_complete_sets_xml_result(subscan):
 
 def test_get_scannable_subnets_includes_glue_nets(dbsession, fake_wan_routers):
     assert ip_network('192.168.0.0/30') in get_scannable_subnets(dbsession)
+
+
+@pytest.fixture
+def scan_form():
+    scanner_names = {'scanner-a', 'scanner-b'}
+    subnets = ('10.1.0.0/24', 'fd12:3456:789a:1::/64')
+    return ScanSchema.form(scanner_names, subnets)
+
+
+def test_scan_form_requires_nmap_options(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {'nmap_options': '', 'scan_targets': ['10.1.0.0/24']}
+        scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
+
+
+def test_scan_form_scanner_choices_are_optional(scan_form):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scanners': {'scanner_a': '', 'scanner_b': ''},
+        'scan_targets': ['10.1.0.1']
+    }
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_requires_scanner_a_choice(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scanners': {'scanner_a': '', 'scanner_b': 'scanner-b'},
+            'scan_targets': ['10.1.0.1']
+        }
+        scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
+
+
+def test_scan_form_requires_scanner_b_choice(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scanners': {'scanner_a': 'scanner-a', 'scanner_b': ''},
+            'scan_targets': ['10.1.0.1']
+        }
+        scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
+
+
+def test_scan_form_requires_distinct_scanner_choices(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scanners': {'scanner_a': 'scanner-a', 'scanner_b': 'scanner-a'},
+            'scan_targets': ['10.1.0.1']
+        }
+        scan_form.validate_pstruct(appstruct)
+    form_html = exc.value.render()
+    assert 'Required' not in form_html
+    assert 'Must be different from Scanner A' in form_html
+
+
+def test_scan_form_simultaneous_scanner_validation(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scanners': {'scanner_a': 'scanner-a', 'scanner_b': 'scanner-a'},
+            'scan_targets': ['']
+        }
+        scan_form.validate_pstruct(appstruct)
+    form_html = exc.value.render()
+    assert 'Required' in form_html
+    assert 'Must be different from Scanner A' in form_html
+
+
+def test_scan_form_requires_a_scan_target(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {'nmap_options': PING_SWEEP}
+        scan_form.validate_pstruct(appstruct)
+    assert 'Must submit at least one Scan Target' in exc.value.render()
+
+
+def test_scan_form_targets_not_empty(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['']}
+        scan_form.validate_pstruct(appstruct)
+    assert 'Required' in exc.value.render()
+
+
+def test_scan_form_allows_ipv4_address(scan_form):
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['10.1.0.1']}
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_allows_ipv4_network(scan_form):
+    appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['10.1.0.0/24']}
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_allows_ipv6_address(scan_form):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ['fd12:3456:789a:1::1']
+    }
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_allows_ipv6_network(scan_form):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ['fd12:3456:789a:1::/64']
+    }
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_allows_resolvable_hostname(scan_form, fake_dns):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ['wanmap.local']
+    }
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_does_not_allow_unresolvable(scan_form, fake_dns):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {'nmap_options': PING_SWEEP, 'scan_targets': ['*']}
+        scan_form.validate_pstruct(appstruct)
+    assert 'Unable to resolve hostname' in exc.value.render()
+
+
+def test_scan_form_subnets_allows_non_overlapping_targets(scan_form):
+    appstruct = {
+        'nmap_options': PING_SWEEP,
+        'scan_targets': ['10.0.0.0/8', 'fd12:3456:789a:1::/64'],
+    }
+    scan_form.validate_pstruct(appstruct)
+
+
+def test_scan_form_subnets_restricts_overlapping_targets(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scan_targets': ['10.0.0.0/8', '10.1.0.0/24'],
+        }
+        scan_form.validate_pstruct(appstruct)
+    assert 'Target cannot overlap' in exc.value.render()
+
+
+def test_scan_form_restricts_multiple_overlapping_targets(scan_form):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scan_targets': ['10.0.0.0/8', '10.1.0.0/24', '10.1.0.1'],
+        }
+        scan_form.validate_pstruct(appstruct)
+    assert exc.value.render().count('Target cannot overlap') == 3
+
+
+def test_scan_form_restricts_overlapping_host(scan_form, fake_dns):
+    with pytest.raises(ValidationFailure) as exc:
+        appstruct = {
+            'nmap_options': PING_SWEEP,
+            'scan_targets': ['10.0.0.0/8', 'wanmap.local'],
+        }
+        scan_form.validate_pstruct(appstruct)
+    assert 'Target cannot overlap' in exc.value.render()

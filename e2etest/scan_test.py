@@ -56,11 +56,11 @@ def test_splitting_scan_live(base_url, selenium):
     selenium.implicitly_wait(3)
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-splitting-scan')
+    new_scan_link = selenium.find_element_by_id('new-scan')
     new_scan_link.click()
 
     # TODO: Rename field buttons
-    add_scan_target = selenium.find_element_by_id('deformField2-seqAdd')
+    add_scan_target = selenium.find_element_by_id('deformField5-seqAdd')
     add_scan_target.click()
     nmap_options = selenium.find_element_by_name('nmap_options')
     nmap_options.send_keys(PING_SWEEP)
@@ -81,10 +81,13 @@ def test_delta_scan_live(base_url, selenium):
     """Quickly test a delta scan."""
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-delta-scan')
+    new_scan_link = selenium.find_element_by_id('new-scan')
     new_scan_link.click()
 
     # TODO: Rename field buttons
+    collapsed_scanners = selenium.find_element_by_css_selector(
+        'a[href*=collapse-deformField2')
+    collapsed_scanners.click()
     nmap_options = selenium.find_element_by_name('nmap_options')
     nmap_options.send_keys(PING_SWEEP)
     scanner_a = Select(selenium.find_element_by_name('scanner_a'))
@@ -113,7 +116,7 @@ def test_fastest_scan_successfully_completes(base_url, selenium, trial):
     selenium.implicitly_wait(3)
     selenium.get(base_url)
 
-    new_scan_link = selenium.find_element_by_id('new-splitting-scan')
+    new_scan_link = selenium.find_element_by_id('new-scan')
     new_scan_link.click()
 
     # TODO: Rename field buttons
