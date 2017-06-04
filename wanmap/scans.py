@@ -410,6 +410,10 @@ class ScanSchema(colander.Schema):
         widget=widget.MappingWidget(template='mapping_accordion', open=False))
     scan_targets = ScanTargets()
 
+    def after_bind(self, schema, kw):
+        if len(kw['scanner_names']) <= 1:
+            del self['scanners']
+
     @classmethod
     def form(cls, scanner_names, subnets):
         schema = cls().bind(scanner_names=scanner_names, subnets=subnets)

@@ -93,7 +93,6 @@ def test_new_scan_with_scanners_and_subnets_has_form(
     assert response.forms['scan']
 
 
-@pytest.mark.xfail(reason='Need to disable fieldset')
 @pytest.mark.parametrize('method', ('GET', 'POST'))
 def test_new_scan_with_one_scanner_has_no_scanner_selection(
     monkeypatch, fresh_app, method):
@@ -104,7 +103,8 @@ def test_new_scan_with_one_scanner_has_no_scanner_selection(
         'wanmap.scans.get_scanner_names',
         lambda _: {'dc'})
     response = fresh_app.request('/scans/new', method=method)
-    assert not response.forms
+    assert 'scanner_a' not in response.forms['scan'].fields
+    assert 'scanner_b' not in response.forms['scan'].fields
 
 
 @pytest.mark.xfail(reason='Need to render informational message')
@@ -132,7 +132,8 @@ def test_new_scan_with_two_scanners_has_scanner_selection(
         'wanmap.scans.get_scanner_names',
         lambda _: {'dc', 'branch'})
     response = fresh_app.request('/scans/new', method=method)
-    assert response.forms['scan']
+    assert response.forms['scan'].fields['scanner_a'][0].tag == 'select'
+    assert response.forms['scan'].fields['scanner_b'][0].tag == 'select'
 
 
 @pytest.fixture
