@@ -16,7 +16,7 @@ kombu==4.6.4
 paramiko==2.6.0
 PasteDeploy==2.0.1
 peppercorn==0.6
-psycopg2==2.8.3
+psycopg2-binary==2.8.3
 pyasn1==0.4.7
 pycparser==2.19
 pyramid==1.10.4
