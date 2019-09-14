@@ -21,10 +21,10 @@ from mininet.link import Link, TCLink
 
 CELERY_PATH = os.environ['CELERY_PATH']
 CONSOLE_IP = '10.1.0.10/24'
-INTERNAL_BROKER_URL = 'amqp://guest@10.1.0.10/'
+INTERNAL_BROKER_URL = 'redis://10.1.0.10/'
 INTERNET_IP = '192.0.2.1'
 EXTERNAL_SCANNER_IP = '198.51.100.2'
-EXTERNAL_BROKER_URL = 'amqp://guest@192.0.2.1/'
+EXTERNAL_BROKER_URL = 'redis://192.0.2.1/'
 DMZ_BLOCK = u'203.0.113.0/24'
 
 ROUTER_UUIDS = {
@@ -84,7 +84,7 @@ class FakeWAN(object):
         dc_to_external.intf2.setIP('198.51.100.2', prefixLen=30)
         external_scanner.setDefaultRoute('external-to-dc')
 
-        dc_dist.cmd('iptables -t nat -A PREROUTING -i dc-to-external -p tcp -m tcp --dport 5672 -j DNAT --to 10.1.0.10')
+        dc_dist.cmd('iptables -t nat -A PREROUTING -i dc-to-external -p tcp -m tcp --dport 6379 -j DNAT --to 10.1.0.10')
 
         dc_to_dmz = Link(
             dc_dist, dmz_fw,
@@ -94,7 +94,7 @@ class FakeWAN(object):
         dc_to_dmz.intf2.setIP('192.168.0.6/30')
         dmz_fw.setDefaultRoute('via 192.168.0.5')
         dmz_fw.cmd('iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT')
-        dmz_fw.cmd('iptables -A FORWARD -d 10.1.0.10 -m tcp -p tcp --dport amqp --syn -j ACCEPT')
+        dmz_fw.cmd('iptables -A FORWARD -d 10.1.0.10 -m tcp -p tcp --dport 6379 --syn -j ACCEPT')
         dmz_fw.cmd('iptables -A FORWARD -j DROP')
 
         self.add_scanner('scanner1', '10.1.0.254/20')
@@ -190,7 +190,7 @@ class ScannerNode(Node):
         # Establish connectivity before starting Celery to ensure
         # celeryd_after_setup event messages persist_scanner task.
         broker_ip_address = extract_ipv4_address(broker_url)
-        ping_wait = "(until nping --tcp -p 5672 -c 1 {0} | grep ' SA '; do sleep .5; done)".format(broker_ip_address)
+        ping_wait = "(until nping --tcp -p 6379 -c 1 {0} | grep ' SA '; do sleep .5; done)".format(broker_ip_address)
         cmd = '{0} worker -A wanmap.tasks -b {1} -l INFO -n scanner@{2} -X console'     # noqa
         cmd = cmd.format(CELERY_PATH, broker_url, self.name)
         launch_celery = "runuser --session-command -u wanmap '{0}'".format(cmd)

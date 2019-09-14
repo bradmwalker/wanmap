@@ -1,6 +1,6 @@
 from kombu import Exchange, Queue
 
-result_backend = 'rpc://'
+result_backend = 'redis://'
 
 task_queues = (
     Queue('console', Exchange('default', type='direct'), routing_key='console'),
