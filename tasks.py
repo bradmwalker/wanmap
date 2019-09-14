@@ -8,7 +8,7 @@ import time
 
 WANMAP_DEPENDENCIES = '''
 postgresql-server rabbitmq-server redis gcc redhat-rpm-config postgresql-devel
-python36 libffi-devel openssl-devel nmap
+python37 libffi-devel openssl-devel nmap chromedriver
 '''.split()
 MININET_DEPENDENCIES = '''
 gcc make socat psmisc xterm openssh-clients iperf net-tools iproute telnet
