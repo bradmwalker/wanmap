@@ -1,7 +1,7 @@
 [Unit]
 Description=WANmap Task Queue
-Requires=postgresql.service rabbitmq-server.service
-After=postgresql.service rabbitmq-server.service network.target
+Requires=postgresql.service redis.service
+After=postgresql.service redis.service network.target
 
 [Service]
 User=wanmap

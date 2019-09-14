@@ -7,7 +7,7 @@ import time
 
 
 WANMAP_DEPENDENCIES = '''
-postgresql-server rabbitmq-server redis gcc redhat-rpm-config postgresql-devel
+postgresql-server redis gcc redhat-rpm-config postgresql-devel
 python37 libffi-devel openssl-devel nmap chromedriver
 '''.split()
 MININET_DEPENDENCIES = '''
@@ -138,11 +138,8 @@ def install_guest_virtualenv(ctx):
 def configure_guest(ctx):
     guest = WANMapGuest(GUEST_NAME)
 
-    # Setup rabbitmq and postgresql
-    guest.run_args(
-        ['sed', '-re',
-         's/%% \{loopback_users, \[\]\},/\{loopback_users, \[\]\}/',
-         '-i', '/etc/rabbitmq/rabbitmq.config'])
+    # Setup redis and postgresql
+    guest.run('systemctl start redis')
     guest.run('postgresql-setup --initdb')
     guest.run('systemctl start postgresql')
     guest.run('sudo -u postgres createuser -s wanmap')

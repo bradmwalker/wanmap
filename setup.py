@@ -16,7 +16,7 @@ requires = [
     'pyramid_tm',
     'waitress',
     'zope.sqlalchemy',
-    ]
+]
 
 setup(name='wanmap',
       version='0.0',
