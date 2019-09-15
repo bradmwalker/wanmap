@@ -1,0 +1,13 @@
+FROM python:3.7
+RUN apt-get update
+# Mininet dependencies
+RUN apt-get install -y bridge-utils help2man net-tools python-pip socat
+# Test runner dependencies
+RUN apt-get install -y postgresql-client
+WORKDIR /wanmap
+COPY . /wanmap
+RUN pip install --prefer-binary --no-cache-dir \
+        --trusted-host pypi.python.org -r requirements.dev.txt
+RUN pip install -e .
+RUN PREFIX=/usr/local make -C vendor/mininet install
+CMD pshell development.ini
