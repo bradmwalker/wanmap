@@ -15,7 +15,8 @@ from uuid import UUID
 
 from mininet.log import setLogLevel
 from mininet.net import Mininet
-from mininet.node import Node, OVSBridge
+from mininet.node import Node
+from mininet.nodelib import LinuxBridge
 # Circular dependency
 from mininet.link import Link, TCLink
 
@@ -46,7 +47,7 @@ def main():
 class FakeWAN(object):
 
     def __init__(self):
-        self._net = Mininet(switch=OVSBridge)
+        self._net = Mininet(switch=LinuxBridge)
         self._switch_id_sequence = count()
         self._switches = {}
 

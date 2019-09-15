@@ -14,7 +14,7 @@ MININET_DEPENDENCIES = '''
 gcc make socat psmisc xterm openssh-clients iperf net-tools iproute telnet
 python-setuptools libcgroup-tools ethtool help2man pyflakes pylint
 python-pep8 python-pexpect git pkgconfig autoconf automake libtool glibc-devel
-openvswitch python-ipaddress which
+python-ipaddress which
 '''.split()
 UTILITIES = '''tcpdump lsof strace bind-utils'''.split()
 
