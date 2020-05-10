@@ -3,17 +3,19 @@
 Create a network and inject scanner agents.
 """
 
+from typing import Sequence
+
 import libvirt
 import pexpect
 
 
 def main():
     conn = libvirt.open('qemu:///system')
-    dc_to_branch = Bridge('vw001')
+    dc_to_branch = Bridge('dc-to-branch')
     dc_to_branch.start(conn)
-    dc = Router('dc')
+    dc = Router('dc', [dc_to_branch])
     dc.start(conn)
-    branch = Router('branch')
+    branch = Router('branch', [dc_to_branch])
     branch.start(conn)
     input()
     branch.stop()
@@ -21,10 +23,31 @@ def main():
     dc_to_branch.stop()
 
 
+class Bridge:
+
+    def __init__(self, name):
+        self.name = name
+
+    def start(self, hypervisor: libvirt.virConnect):
+        self._network = hypervisor.networkCreateXML(self.xml)
+
+    def stop(self):
+        self._network.destroy()
+
+    @property
+    def xml(self) -> str:
+        return f'''<network>
+  <name>{self.name}</name>
+  <bridge name="{self.name}"/>
+</network>
+'''
+
+
 class Router:
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, bridges: Sequence[Bridge] = ()):
         self._name = name
+        self._bridges = bridges
 
     def start(self, hypervisor: libvirt.virConnect):
         self._guest = hypervisor.createXML(self.xml, 0)
@@ -55,14 +78,20 @@ class Router:
       <source file='/vyos-rolling-latest.iso'/>
       <target dev='hdc' bus='ide'/>
     </disk>
-    <interface type='bridge'>
-      <source bridge='vw001'/>
-    </interface>
+''' + self._interface_xml + '''
     <serial type='pty'/>
     <graphics type='vnc' port='-1' listen='127.0.0.1'/>
   </devices>
 </domain>
 '''
+
+    @property
+    def _interface_xml(self) -> str:
+        return ''.join(
+            f'''<interface type='bridge'>
+  <source bridge='{bridge.name}'/>
+</interface>'''
+            for bridge in self._bridges)
 
     def configure(self):
         console = pexpect.spawn(
@@ -91,26 +120,6 @@ class Router:
         console.sendline('exit')
         console.sendline('exit')
         console.close()
-
-
-class Bridge:
-
-    def __init__(self, name):
-        self.name = name
-
-    def start(self, hypervisor: libvirt.virConnect):
-        self._network = hypervisor.networkCreateXML(self.xml)
-
-    def stop(self):
-        self._network.destroy()
-
-    @property
-    def xml(self) -> str:
-        return f'''<network>
-  <name>{self.name}</name>
-  <bridge name="{self.name}"/>
-</network>
-'''
 
 
 if __name__ == '__main__':
