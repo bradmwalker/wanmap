@@ -12,9 +12,12 @@ import pexpect
 def main():
     hypervisor = libvirt.open('qemu:///system')
     vwan = VirtualWAN(hypervisor)
-    for bridge in ('dc-to-branch', 'dc', 'branch'):
+    for bridge in ('dc-to-branch', 'branch'):
         vwan.add_bridge(bridge)
-    vwan.add_router('dc', ['dc-to-branch', 'dc'])
+    dc_subnets = [f'dc{i:02d}' for i in range(16)]
+    for bridge in dc_subnets:
+        vwan.add_bridge(bridge)
+    vwan.add_router('dc', ['dc-to-branch', *dc_subnets])
     vwan.add_router('branch', ['dc-to-branch', 'branch'])
     vwan.run()
 
