@@ -20,8 +20,10 @@ def main():
     network = conn.networkCreateXML(network)
     dc = Router('dc')
     dc.start(conn)
-    dc.configure()
+    branch = Router('branch')
+    branch.start(conn)
     input()
+    branch.stop()
     dc.stop()
     network.destroy()
 
@@ -33,6 +35,8 @@ class Router:
 
     def start(self, hypervisor: libvirt.virConnect):
         self._guest = hypervisor.createXML(self.xml, 0)
+        # TODO: Parallelize router startup and configuration
+        self.configure()
 
     def stop(self):
         self._guest.destroy()
