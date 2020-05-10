@@ -13,13 +13,19 @@ def main():
     conn = libvirt.open('qemu:///system')
     dc_to_branch = Bridge('dc-to-branch')
     dc_to_branch.start(conn)
-    dc = Router('dc', [dc_to_branch])
+    dc_subnet = Bridge('dc')
+    dc_subnet.start(conn)
+    dc = Router('dc', [dc_to_branch, dc_subnet])
     dc.start(conn)
-    branch = Router('branch', [dc_to_branch])
+    branch_subnet = Bridge('branch')
+    branch_subnet.start(conn)
+    branch = Router('branch', [dc_to_branch, branch_subnet])
     branch.start(conn)
     input()
     branch.stop()
     dc.stop()
+    branch_subnet.stop()
+    dc_subnet.stop()
     dc_to_branch.stop()
 
 
@@ -58,7 +64,7 @@ class Router:
         self._guest.destroy()
 
     @property
-    def xml(self):
+    def xml(self) -> str:
         return f'''<domain type='kvm'>
   <name>{self._name}</name>
   <memory>524288</memory>
