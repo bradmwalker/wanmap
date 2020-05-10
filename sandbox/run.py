@@ -3,10 +3,13 @@
 Create a network and inject scanner agents.
 """
 
+import subprocess
 from typing import Sequence
 
 import libvirt
 import pexpect
+
+CONSOLE_IP = '10.1.0.10/24'
 
 
 def main():
@@ -19,6 +22,7 @@ def main():
         vwan.add_bridge(bridge)
     vwan.add_router('dc', ['dc-to-branch', *dc_subnets])
     vwan.add_router('branch', ['dc-to-branch', 'branch'])
+    vwan.add_anchor('dc00', CONSOLE_IP)
     vwan.run()
 
 
@@ -26,8 +30,12 @@ class VirtualWAN:
 
     def __init__(self, hypervisor: libvirt.virConnect):
         self._hypervisor = hypervisor
+        self._anchor = None
         self._bridges = {}
         self._routers = {}
+
+    def add_anchor(self, bridge: str, ip_address: str):
+        self._anchor = Anchor(self._bridges[bridge], ip_address)
 
     def add_bridge(self, name: str):
         self._bridges[name] = Bridge(name)
@@ -39,6 +47,8 @@ class VirtualWAN:
     def run(self):
         for bridge in self._bridges.values():
             bridge.start(self._hypervisor)
+        if self._anchor is not None:
+            self._anchor.start()
         for router in self._routers.values():
             router.start(self._hypervisor)
         input()
@@ -47,6 +57,8 @@ class VirtualWAN:
     def cleanup(self):
         for router in self._routers.values():
             router.stop()
+        if self._anchor is not None:
+            self._anchor.stop()
         for bridge in self._bridges.values():
             bridge.stop()
 
@@ -69,6 +81,28 @@ class Bridge:
   <bridge name="{self.name}"/>
 </network>
 '''
+
+
+class Anchor:
+
+    def __init__(self, bridge: Bridge, ip_address: str):
+        self._bridge = bridge
+        self._ip_address = ip_address
+
+    def start(self):
+        subprocess.call(
+            'ip link add dev anchor type veth peer name rohcna', shell=True)
+        subprocess.call(
+            f'ip link set dev rohcna master {self._bridge.name}', shell=True)
+        subprocess.call(
+            f'ip addr add {self._ip_address} dev anchor', shell=True)
+        subprocess.call('ip link set dev anchor up', shell=True)
+        subprocess.call('ip link set dev rohcna up', shell=True)
+
+    def stop(self):
+        subprocess.call('ip link set dev anchor down', shell=True)
+        subprocess.call('ip link set dev rohcna down', shell=True)
+        subprocess.call('ip link del dev anchor', shell=True)
 
 
 class Router:
