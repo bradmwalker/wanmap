@@ -5,17 +5,10 @@ Create a network and inject scanner agents.
 
 import libvirt
 import pexpect
-import subprocess
-import sys
 
 
 def main():
-    try:
-        conn = libvirt.open('qemu:///system')
-    except libvirt.libvirtError:
-        print('Failed to open connection to the hypervisor')
-        sys.exit(1)
-
+    conn = libvirt.open('qemu:///system')
     dc_to_branch = Bridge('vw001')
     dc_to_branch.start(conn)
     dc = Router('dc')
