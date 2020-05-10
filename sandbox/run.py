@@ -16,8 +16,8 @@ def main():
         print('Failed to open connection to the hypervisor')
         sys.exit(1)
 
-    network = bridge_xml('vw001')
-    network = conn.networkCreateXML(network)
+    dc_to_branch = Bridge('vw001')
+    dc_to_branch.start(conn)
     dc = Router('dc')
     dc.start(conn)
     branch = Router('branch')
@@ -25,7 +25,7 @@ def main():
     input()
     branch.stop()
     dc.stop()
-    network.destroy()
+    dc_to_branch.stop()
 
 
 class Router:
@@ -100,10 +100,22 @@ class Router:
         console.close()
 
 
-def bridge_xml(name: str) -> str:
-    return f'''<network>
-  <name>{name}</name>
-  <bridge name="{name}"/>
+class Bridge:
+
+    def __init__(self, name):
+        self.name = name
+
+    def start(self, hypervisor: libvirt.virConnect):
+        self._network = hypervisor.networkCreateXML(self.xml)
+
+    def stop(self):
+        self._network.destroy()
+
+    @property
+    def xml(self) -> str:
+        return f'''<network>
+  <name>{self.name}</name>
+  <bridge name="{self.name}"/>
 </network>
 '''
 
