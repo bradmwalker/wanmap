@@ -10,23 +10,42 @@ import pexpect
 
 
 def main():
-    conn = libvirt.open('qemu:///system')
-    dc_to_branch = Bridge('dc-to-branch')
-    dc_to_branch.start(conn)
-    dc_subnet = Bridge('dc')
-    dc_subnet.start(conn)
-    dc = Router('dc', [dc_to_branch, dc_subnet])
-    dc.start(conn)
-    branch_subnet = Bridge('branch')
-    branch_subnet.start(conn)
-    branch = Router('branch', [dc_to_branch, branch_subnet])
-    branch.start(conn)
-    input()
-    branch.stop()
-    dc.stop()
-    branch_subnet.stop()
-    dc_subnet.stop()
-    dc_to_branch.stop()
+    hypervisor = libvirt.open('qemu:///system')
+    vwan = VirtualWAN(hypervisor)
+    for bridge in ('dc-to-branch', 'dc', 'branch'):
+        vwan.add_bridge(bridge)
+    vwan.add_router('dc', ['dc-to-branch', 'dc'])
+    vwan.add_router('branch', ['dc-to-branch', 'branch'])
+    vwan.run()
+
+
+class VirtualWAN:
+
+    def __init__(self, hypervisor: libvirt.virConnect):
+        self._hypervisor = hypervisor
+        self._bridges = {}
+        self._routers = {}
+
+    def add_bridge(self, name: str):
+        self._bridges[name] = Bridge(name)
+
+    def add_router(self, name: str, bridges: Sequence[str] = ()):
+        bridges = [self._bridges[bridge] for bridge in bridges]
+        self._routers[name] = Router(name, bridges)
+
+    def run(self):
+        for bridge in self._bridges.values():
+            bridge.start(self._hypervisor)
+        for router in self._routers.values():
+            router.start(self._hypervisor)
+        input()
+        self.cleanup()
+
+    def cleanup(self):
+        for router in self._routers.values():
+            router.stop()
+        for bridge in self._bridges.values():
+            bridge.stop()
 
 
 class Bridge:
