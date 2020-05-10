@@ -13,9 +13,12 @@ libffi-dev libssl-dev nmap python3-dev python3-pip python3-venv
 '''.split()
 MININET_DEPENDENCIES = '''
 gcc make socat psmisc xterm openssh-client openssh-server iperf net-tools
-iproute2 telnet python-setuptools cgroup-tools ethtool help2man pyflakes pylint
-pep8 python-pexpect git pkg-config autoconf automake libtool libc6-dev
+iproute2 telnet python2 python-setuptools cgroup-tools ethtool help2man pyflakes
+pylint pep8 python-pexpect git pkg-config autoconf automake libtool libc6-dev
 python-ipaddress debianutils
+'''.split()
+VYOS_DEPENDENCIES = '''
+bridge-utils libvirt-clients libvirt-daemon-system python3-libvirt
 '''.split()
 UTILITIES = '''curl tcpdump lsof strace bind9-utils'''.split()
 
@@ -102,7 +105,12 @@ def install_guest_rpms(ctx):
     guest.run_args_with_host_net(
         ['apt-get', 'install', '-y'] + MININET_DEPENDENCIES)
     guest.run_args_with_host_net(
+        ['apt-get', 'install', '-y'] + VYOS_DEPENDENCIES)
+    guest.run_args_with_host_net(
         ['apt-get', 'install', '-y'] + UTILITIES)
+    guest.run_args_with_host_net(
+        ['wget',
+         'https://downloads.vyos.io/rolling/current/amd64/vyos-rolling-latest.iso'])
 
 
 @task(install_guest_rpms)
