@@ -3,7 +3,10 @@
 Create a network and inject scanner agents.
 """
 
+from ipaddress import ip_interface
+import logging
 import subprocess
+import sys
 from typing import Sequence
 
 import libvirt
@@ -13,6 +16,7 @@ CONSOLE_IP = '10.1.0.10/24'
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     hypervisor = libvirt.open('qemu:///system')
     vwan = VirtualWAN(hypervisor)
     for bridge in ('dc-to-branch', 'branch'):
@@ -23,6 +27,8 @@ def main():
     vwan.add_router('dc', ['dc-to-branch', *dc_subnets])
     vwan.add_router('branch', ['dc-to-branch', 'branch'])
     vwan.add_anchor('dc00', CONSOLE_IP)
+    vwan.add_scanner('scanner1', 'dc00', '10.1.0.254/20')
+    vwan.add_scanner('scanner2', 'branch', '10.2.0.254/20')
     vwan.run()
 
 
@@ -33,6 +39,7 @@ class VirtualWAN:
         self._anchor = None
         self._bridges = {}
         self._routers = {}
+        self._scanners = {}
 
     def add_anchor(self, bridge: str, ip_address: str):
         self._anchor = Anchor(self._bridges[bridge], ip_address)
@@ -44,11 +51,17 @@ class VirtualWAN:
         bridges = [self._bridges[bridge] for bridge in bridges]
         self._routers[name] = Router(name, bridges)
 
+    def add_scanner(self, name: str, bridge: str, ip_address: str):
+        bridge = self._bridges[bridge]
+        self._scanners[name] = Scanner(name, bridge, ip_address)
+
     def run(self):
         for bridge in self._bridges.values():
             bridge.start(self._hypervisor)
         if self._anchor is not None:
             self._anchor.start()
+        for scanner in self._scanners.values():
+            scanner.start()
         for router in self._routers.values():
             router.start(self._hypervisor)
         input()
@@ -57,6 +70,8 @@ class VirtualWAN:
     def cleanup(self):
         for router in self._routers.values():
             router.stop()
+        for scanner in self._scanners.values():
+            scanner.stop()
         if self._anchor is not None:
             self._anchor.stop()
         for bridge in self._bridges.values():
@@ -182,6 +197,42 @@ class Router:
         console.sendline('exit')
         console.sendline('exit')
         console.close()
+
+
+class Scanner:
+
+    def __init__(self, name: str, bridge: Bridge, ip_address: str):
+        self.name = name
+        self._bridge = bridge
+        self._ip_address = ip_interface(ip_address)
+
+    def start(self):
+        self._guest = guest = pexpect.spawn('unshare -nu', timeout=None)
+        logging.info('Running scanner %s in pid %d', self.name, self._guest.pid)
+        host = pexpect.spawn('bash')
+        host.sendline(
+            f'ip link add dev eth0 netns {guest.pid} type veth '
+            f'peer name {self.name}')
+        host.sendline(
+            f'ip link set dev {self.name} master {self._bridge.name}')
+        host.sendline(f'ip link set dev {self.name} up')
+        guest.sendline(f'ip addr add dev eth0 {self._ip_address}')
+        guest.sendline(f'ip link set dev eth0 up')
+        gateway = next(self._ip_address.network.hosts())
+        guest.sendline(f'ip route add default via {gateway}')
+        host.terminate()
+        self.configure()
+
+    def configure(self):
+        self._guest.sendline(f'hostname {self.name}')
+        # TODO: source file
+        with open(f'{self.name}.sh', 'rt') as file_:
+            for line in file_.readlines():
+                self._guest.send(line)
+
+    def stop(self):
+        self._guest.sendintr()
+        self._guest.terminate()
 
 
 if __name__ == '__main__':
