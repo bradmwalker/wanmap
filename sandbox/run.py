@@ -5,8 +5,10 @@ Create a network and inject scanner agents.
 
 from ipaddress import ip_interface
 import logging
+from signal import signal, SIGINT, SIGTERM
 import subprocess
 import sys
+from time import sleep
 from typing import Sequence
 
 import libvirt
@@ -35,6 +37,8 @@ def main():
     vwan.add_scanner('dmzscanner', 'dmz', '203.0.113.254/24')
     vwan.add_scanner('external', 'dc-to-external', '198.51.100.2/30')
     vwan.run()
+    while True:
+        sleep(1)
 
 
 class VirtualWAN:
@@ -45,6 +49,9 @@ class VirtualWAN:
         self._bridges = {}
         self._routers = {}
         self._scanners = {}
+
+        signal(SIGINT, self.signalled_exit)
+        signal(SIGTERM, self.signalled_exit)
 
     def add_anchor(self, bridge: str, ip_address: str):
         self._anchor = Anchor(self._bridges[bridge], ip_address)
@@ -69,8 +76,7 @@ class VirtualWAN:
             scanner.start()
         for router in self._routers.values():
             router.start(self._hypervisor)
-        input()
-        self.cleanup()
+        logging.info('Virtual WAN initialization complete')
 
     def cleanup(self):
         for router in self._routers.values():
@@ -81,6 +87,11 @@ class VirtualWAN:
             self._anchor.stop()
         for bridge in self._bridges.values():
             bridge.stop()
+
+    def signalled_exit(self, signum, frame):
+        assert signum in (SIGINT, SIGTERM)
+        self.cleanup()
+        sys.exit(0)
 
 
 class Bridge:
@@ -213,7 +224,7 @@ class Scanner:
 
     def start(self):
         self._guest = guest = pexpect.spawn('unshare -nu', timeout=None)
-        logging.info('Running scanner %s in pid %d', self.name, self._guest.pid)
+        logging.info('Running scanner %s with pid %d', self.name, self._guest.pid)
         host = pexpect.spawn('bash')
         host.sendline(
             f'ip link add dev eth0 netns {guest.pid} type veth '
