@@ -8,6 +8,7 @@ import logging
 from signal import signal, SIGINT, SIGTERM
 import subprocess
 import sys
+from threading import Thread
 from time import sleep
 from typing import Sequence
 
@@ -74,8 +75,16 @@ class VirtualWAN:
             self._anchor.start()
         for scanner in self._scanners.values():
             scanner.start()
+
+        configuration_threads = []
         for router in self._routers.values():
             router.start(self._hypervisor)
+            thread = Thread(target=router.configure)
+            thread.start()
+            configuration_threads.append(thread)
+        for thread in configuration_threads:
+            thread.join()
+
         logging.info('Virtual WAN initialization complete')
 
     def cleanup(self):
@@ -139,13 +148,12 @@ class Anchor:
 class Router:
 
     def __init__(self, name: str, bridges: Sequence[Bridge] = ()):
-        self._name = name
+        self.name = name
         self._bridges = bridges
 
     def start(self, hypervisor: libvirt.virConnect):
+        logging.info(f'Starting router {self.name}')
         self._guest = hypervisor.createXML(self.xml, 0)
-        # TODO: Parallelize router startup and configuration
-        self.configure()
 
     def stop(self):
         self._guest.destroy()
@@ -153,7 +161,7 @@ class Router:
     @property
     def xml(self) -> str:
         return f'''<domain type='kvm'>
-  <name>{self._name}</name>
+  <name>{self.name}</name>
   <memory>524288</memory>
   <vcpu>1</vcpu>
   <os>
@@ -188,20 +196,22 @@ class Router:
 
     def configure(self):
         console = pexpect.spawn(
-            f'virsh -c qemu:///system console {self._name}',
+            f'virsh -c qemu:///system console {self.name}',
             # Allow bootup time
             timeout=60)
         console.sendline('')
         console.expect('.+ login: ')
+        logging.info(f'Router {self.name} serial console is available')
         console.sendline('vyos')
         console.expect('Password: ')
         console.sendline('vyos')
         console.expect(r'vyos@.+:~\$ ')
         console.sendline('cat > vyos.config')
-        with open(f'{self._name}.config', 'rt') as file_:
+        logging.info(f'Configuring router {self.name}')
+        with open(f'{self.name}.config', 'rt') as file_:
             for line in file_.readlines():
                 console.send(line)
-        console.send('')
+        console.sendeof()
         console.sendline('configure')
         console.expect('vyos@.+# ')
         console.sendline('load vyos.config')
@@ -213,6 +223,7 @@ class Router:
         console.sendline('exit')
         console.sendline('exit')
         console.close()
+        logging.info(f'Configured router {self.name}')
 
 
 class Scanner:
