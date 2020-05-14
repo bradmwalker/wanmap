@@ -19,18 +19,21 @@ def main():
     logging.basicConfig(level=logging.INFO)
     hypervisor = libvirt.open('qemu:///system')
     vwan = VirtualWAN(hypervisor)
-    for bridge in ('dc-to-branch', 'dc-to-dmz', 'branch', 'dmz'):
+    for bridge in ('dc-to-branch', 'dc-to-dmz', 'dc-to-external'):
+        vwan.add_bridge(bridge)
+    for bridge in ('branch', 'dmz'):
         vwan.add_bridge(bridge)
     dc_subnets = [f'dc{i:02d}' for i in range(16)]
     for bridge in dc_subnets:
         vwan.add_bridge(bridge)
-    vwan.add_router('dc', ['dc-to-branch', 'dc-to-dmz', *dc_subnets])
+    vwan.add_router('dc', ['dc-to-external', 'dc-to-branch', 'dc-to-dmz', *dc_subnets])
     vwan.add_router('branch', ['dc-to-branch', 'branch'])
     vwan.add_router('dmz', ['dc-to-dmz', 'dmz'])
     vwan.add_anchor('dc00', CONSOLE_IP)
     vwan.add_scanner('scanner1', 'dc00', '10.1.0.254/20')
     vwan.add_scanner('scanner2', 'branch', '10.2.0.254/20')
     vwan.add_scanner('dmzscanner', 'dmz', '203.0.113.254/24')
+    vwan.add_scanner('external', 'dc-to-external', '198.51.100.2/30')
     vwan.run()
 
 
