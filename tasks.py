@@ -11,14 +11,9 @@ WANMAP_DEPENDENCIES = '''
 gcc libpq-dev postgresql postgresql-client redis
 libffi-dev libssl-dev nmap python3-dev python3-pip python3-venv
 '''.split()
-MININET_DEPENDENCIES = '''
-gcc make socat psmisc xterm openssh-client openssh-server iperf net-tools
-iproute2 telnet python2 python-setuptools cgroup-tools ethtool help2man pyflakes
-pylint pep8 python-pexpect git pkg-config autoconf automake libtool libc6-dev
-python-ipaddress debianutils
-'''.split()
 VYOS_DEPENDENCIES = '''
 bridge-utils libvirt-clients libvirt-daemon-system python3-libvirt
+python3-pexpect
 '''.split()
 UTILITIES = '''curl tcpdump lsof strace bind9-utils'''.split()
 
@@ -62,6 +57,18 @@ class WANMapGuest(lxc.Container):
             # Remap git repo to inside container
             '/wanmap wanmap none bind,create=dir 0 0')
 
+    def share_host_kvm(self):
+        self.append_config_item(
+            'lxc.mount.entry', '/dev/kvm dev/kvm none bind,create=file')
+        self.append_config_item('lxc.cgroup.devices.allow', 'c 10:232 rwm')
+        self.append_config_item('lxc.apparmor.profile', 'unconfined')
+
+    def share_host_tun(self):
+        """Provides /dev/net/tun inside container for libvirtd."""
+        self.append_config_item(
+            'lxc.mount.entry', '/dev/net dev/net none bind,create=dir')
+        self.append_config_item('lxc.cgroup.devices.allow', 'c 10:200 rwm')
+
     def run(self, command_string):
         self.run_args(command_string.split())
 
@@ -87,6 +94,8 @@ def init_guest(ctx):
     guest.isolate_net_from_host()
     guest.share_host_var_tmp()
     guest.share_host_working_copy()
+    guest.share_host_kvm()
+    guest.share_host_tun()
     guest.create()
     guest.start()
     time.sleep(3)
@@ -103,22 +112,12 @@ def install_guest_rpms(ctx):
     guest.run_args_with_host_net(
         ['apt-get', 'install', '-y'] + WANMAP_DEPENDENCIES)
     guest.run_args_with_host_net(
-        ['apt-get', 'install', '-y'] + MININET_DEPENDENCIES)
-    guest.run_args_with_host_net(
         ['apt-get', 'install', '-y'] + VYOS_DEPENDENCIES)
     guest.run_args_with_host_net(
         ['apt-get', 'install', '-y'] + UTILITIES)
     guest.run_args_with_host_net(
         ['wget',
          'https://downloads.vyos.io/rolling/current/amd64/vyos-rolling-latest.iso'])
-
-
-@task(install_guest_rpms)
-def install_guest_mininet(ctx):
-    guest = WANMapGuest(GUEST_NAME)
-
-    ctx.run('git submodule update --init')
-    guest.run_args(['bash', '-c', 'cd /wanmap/vendor/mininet; make distclean; make install'])
 
 
 @task(install_guest_rpms)
@@ -141,12 +140,22 @@ def install_guest_virtualenv(ctx):
     guest.run('sudo -u wanmap /opt/wanmap/bin/pip install -e /wanmap')
 
 
-@task(install_guest_mininet, install_guest_virtualenv)
+@task(install_guest_virtualenv)
 def configure_guest(ctx):
     guest = WANMapGuest(GUEST_NAME)
 
-    # Setup redis and postgresql
+    # Setup KVM
+    guest.run_args(
+        ['sed', '-i', '$asecurity_driver = "none"', '/etc/libvirt/qemu.conf'])
+
+    # Setup redis
+    guest.run_args(['sed', '-i', 's/^bind/# bind/', '/etc/redis/redis.conf'])
+    guest.run_args(
+        ['sed', '-i', 's/protected-mode yes/protected-mode no/',
+         '/etc/redis/redis.conf'])
     guest.run('systemctl start redis')
+
+    # Setup postgresql
     guest.run_args(
         ['sed', '-i', 's/port = 5433/port = 5432/',
          '/etc/postgresql/12/main/postgresql.conf'])
@@ -170,12 +179,12 @@ def configure_guest(ctx):
     guest.run(
         'cp /wanmap/config/wanmap-console.service /etc/systemd/system')
     guest.run(
-        'cp /wanmap/config/wanmap-fake-wan.service /etc/systemd/system')
+        'cp /wanmap/config/wanmap-vwan.service /etc/systemd/system')
     guest.run(
         'cp /wanmap/config/wanmap-task-queue.service /etc/systemd/system')
     guest.run('systemctl daemon-reload')
 
-    guest.run('systemctl start wanmap-console wanmap-fake-wan')
+    guest.run('systemctl start wanmap-console wanmap-vwan')
 
 
 @task

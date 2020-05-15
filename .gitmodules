@@ -1,3 +1,0 @@
-[submodule "vendor/mininet"]
-	path = vendor/mininet
-	url = git://github.com/bradmwalker/mininet.git

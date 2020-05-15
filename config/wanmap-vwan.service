@@ -1,0 +1,8 @@
+[Unit]
+Description=WANmap Fake WAN
+Requires=libvirtd.service network.target
+After=libvirtd.service network.target
+
+[Service]
+ExecStart=/wanmap/sandbox/run.py
+Restart=on-failure
