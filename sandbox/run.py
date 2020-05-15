@@ -5,6 +5,7 @@ Create a network and inject scanner agents.
 
 from ipaddress import ip_interface
 import logging
+from pathlib import Path
 from signal import signal, SIGINT, SIGTERM
 import subprocess
 import sys
@@ -16,6 +17,7 @@ import libvirt
 import pexpect
 
 CONSOLE_IP = '10.1.0.10/24'
+HERE = Path(__file__).resolve().parent
 
 
 def main():
@@ -212,7 +214,7 @@ class Router:
         console.expect(r'vyos@.+:~\$ ')
         console.sendline('cat > vyos.config')
         logging.info(f'Configuring router {self.name}')
-        with open(f'{self.name}.config', 'rt') as file_:
+        with open(HERE / f'{self.name}.config', 'rt') as file_:
             for line in file_.readlines():
                 console.send(line)
         console.sendeof()
@@ -257,7 +259,7 @@ class Scanner:
     def configure(self):
         self._guest.sendline(f'hostname {self.name}')
         # TODO: source file
-        with open(f'{self.name}.sh', 'rt') as file_:
+        with open(HERE / f'{self.name}.sh', 'rt') as file_:
             for line in file_.readlines():
                 self._guest.send(line)
 
