@@ -8,7 +8,7 @@ WANmap provides a distributed agent framework and central console web applicatio
 
 * Scan large networks more quickly by distributing scans to multiple localized agents.
 * Determine or validate firewall policy by comparing scan results from two agents.
-* Easily demo or develop WANmap with the bundled [mininet](http://mininet.org) virtual WAN testbed.
+* Easily demo or develop WANmap with the virtual WAN testbed.
 
 ## License
 
