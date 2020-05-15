@@ -133,7 +133,7 @@ class Anchor:
 
     def __init__(self, bridge: Bridge, ip_address: str):
         self._bridge = bridge
-        self._ip_address = ip_address
+        self._ip_address = ip_interface(ip_address)
 
     def start(self):
         subprocess.call(
@@ -144,8 +144,11 @@ class Anchor:
             f'ip addr add {self._ip_address} dev anchor', shell=True)
         subprocess.call('ip link set dev anchor up', shell=True)
         subprocess.call('ip link set dev rohcna up', shell=True)
+        gateway = next(self._ip_address.network.hosts())
+        subprocess.call(f'ip route add default via {gateway}', shell=True)
 
     def stop(self):
+        subprocess.call('ip route del default', shell=True)
         subprocess.call('ip link set dev anchor down', shell=True)
         subprocess.call('ip link set dev rohcna down', shell=True)
         subprocess.call('ip link del dev anchor', shell=True)
