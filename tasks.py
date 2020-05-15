@@ -12,10 +12,9 @@ gcc libpq-dev postgresql postgresql-client redis
 libffi-dev libssl-dev nmap python3-dev python3-pip python3-venv
 '''.split()
 VYOS_DEPENDENCIES = '''
-bridge-utils libvirt-clients libvirt-daemon-system python3-libvirt
-python3-pexpect
+libvirt-daemon-system python3-libvirt python3-pexpect wget
 '''.split()
-UTILITIES = '''curl tcpdump lsof strace bind9-utils'''.split()
+UTILITIES = '''tcpdump lsof strace bind9-utils'''.split()
 
 
 if not os.geteuid() == 0:
@@ -147,6 +146,7 @@ def configure_guest(ctx):
     # Setup KVM
     guest.run_args(
         ['sed', '-i', '$asecurity_driver = "none"', '/etc/libvirt/qemu.conf'])
+    guest.run('systemctl restart libvirtd')
 
     # Setup redis
     guest.run_args(['sed', '-i', 's/^bind/# bind/', '/etc/redis/redis.conf'])
