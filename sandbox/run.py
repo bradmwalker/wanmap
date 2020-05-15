@@ -110,6 +110,10 @@ class Bridge:
 
     def start(self, hypervisor: libvirt.virConnect):
         self._network = hypervisor.networkCreateXML(self.xml)
+        # Allow LLDP traffic on bridge
+        subprocess.call(
+            f'echo 16384 > /sys/class/net/{self.name}/bridge/group_fwd_mask',
+            shell=True)
 
     def stop(self):
         self._network.destroy()
