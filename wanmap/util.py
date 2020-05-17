@@ -6,7 +6,7 @@ import socket
 
 __all__ = [
     'is_ip_network', 'to_ip_network', 'intersect_network_sets',
-    'intersect_networks', 'opposite_address',
+    'intersect_networks',
 ]
 
 
@@ -41,9 +41,3 @@ def intersect_network_sets(nets_a, nets_b):
 def intersect_networks(net_a, net_b):
     if net_a.overlaps(net_b):
         return max(net_a, net_b, key=attrgetter('prefixlen'))
-
-
-def opposite_address(interface):
-    assert interface.network.prefixlen == 30
-    first, second = interface.network.hosts()
-    return first if interface.ip == second else second

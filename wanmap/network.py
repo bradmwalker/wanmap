@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload, relationship
 import transaction
 
 from .schema import Persistable
-from .util import intersect_network_sets, opposite_address
+from .util import intersect_network_sets
 
 logger = logging.getLogger(__name__)
 
