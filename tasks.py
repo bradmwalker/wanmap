@@ -8,7 +8,7 @@ import time
 
 # TODO: Install chromedriver
 WANMAP_DEPENDENCIES = '''
-gcc libpq-dev postgresql postgresql-client redis
+gcc git libpq-dev postgresql postgresql-client redis
 libffi-dev libssl-dev nmap python3-dev python3-pip python3-venv
 '''.split()
 VYOS_DEPENDENCIES = '''
