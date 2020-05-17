@@ -144,17 +144,16 @@ def discover_network(seed_router_hostname, credentials):
 
     to_visit = deque((seed_router_hostname,))
     routers = []
-    visited = set()
+    discovered = {seed_router_hostname}
     while to_visit:
         visiting = to_visit.popleft()
-        if visiting in visited:
-            continue
-        visited.add(visiting)
         router, neighbors = get_router(visiting, credentials)
         if router:
             routers.append(router)
-            to_visit.extend(
-                neighbor for neighbor in neighbors if neighbor not in visited)
+            for neighbor in neighbors:
+                if neighbor not in discovered:
+                    discovered.add(neighbor)
+                    to_visit.append(neighbor)
     return routers
 
 
