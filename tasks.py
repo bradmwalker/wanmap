@@ -1,9 +1,13 @@
-from invoke import task
-import lxc
 import os
+from pathlib import Path
 import shutil
 import sys
 import time
+
+from invoke import task
+import lxc
+
+HERE = Path(__file__).resolve().parent
 
 
 # TODO: Install chromedriver
@@ -12,9 +16,9 @@ gcc git libpq-dev postgresql postgresql-client redis
 libffi-dev libssl-dev nmap python3-dev python3-pip python3-venv
 '''.split()
 VYOS_DEPENDENCIES = '''
-libvirt-daemon-system python3-libvirt python3-pexpect wget
+dnsmasq libvirt-daemon-system python3-libvirt python3-pexpect wget
 '''.split()
-UTILITIES = '''tcpdump lsof strace bind9-utils'''.split()
+UTILITIES = '''bind9-dnsutils lsof strace tcpdump'''.split()
 
 
 if not os.geteuid() == 0:
@@ -147,6 +151,11 @@ def configure_guest(ctx):
     guest.run_args(
         ['sed', '-i', '$asecurity_driver = "none"', '/etc/libvirt/qemu.conf'])
     guest.run('systemctl restart libvirtd')
+
+    # Setup dnsmasq
+    guest_hosts = f'{guest.rootfs}/etc/hosts'
+    shutil.copy(HERE / 'sandbox' / 'hosts', guest_hosts)
+    guest.run('systemctl restart dnsmasq')
 
     # Setup redis
     guest.run_args(['sed', '-i', 's/^bind/# bind/', '/etc/redis/redis.conf'])
