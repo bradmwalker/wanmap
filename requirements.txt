@@ -9,7 +9,7 @@ cffi==1.14.0
 Chameleon==3.7.1
 ciscoconfparse==1.5.4
 colander==1.7.0
-cryptography==2.9.2
+cryptography==3.2
 deform==2.0.8
 dnspython==1.16.0
 future==0.18.2
