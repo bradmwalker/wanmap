@@ -20,7 +20,7 @@ iso8601==0.1.12
 Jinja2==2.11.2
 junos-eznc==2.4.1
 kombu==4.6.8
-lxml==4.5.0
+lxml==4.6.2
 MarkupSafe==1.1.1
 more-itertools==8.3.0
 napalm==3.0.1
